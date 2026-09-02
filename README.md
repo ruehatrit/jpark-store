@@ -1,2 +1,2 @@
 # JPARK Store & Stock Management
-Cloud-ready version for Render.
+Render-ready Go web app. Replace the files in the existing GitHub repository and Render will redeploy automatically.
