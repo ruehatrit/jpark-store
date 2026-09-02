@@ -1,2 +1,2 @@
-# jpark-store
-JPARK Store &amp; Stock Management
+# JPARK Store & Stock Management
+Cloud-ready version for Render.
