@@ -297,6 +297,24 @@ func dailyActionHandler(w http.ResponseWriter, r *http.Request) {
 			ID: nextDailyRecordID(), Date: s("date"), Shift: s("shift"), Inspector: s("inspector"),
 			OverallNote: s("overallNote"), CreatedAt: time.Now().Format(time.RFC3339), Results: results,
 		})
+	case "updateIssue":
+		recordID := n("recordId")
+		itemID := n("itemId")
+		found := false
+		for ri := range dailySt.Records {
+			if dailySt.Records[ri].ID != recordID { continue }
+			for xi := range dailySt.Records[ri].Results {
+				x := &dailySt.Records[ri].Results[xi]
+				if x.ItemID == itemID && x.Status == "ผิดปกติ" {
+					x.ActionStatus = s("actionStatus")
+					x.Note = s("note")
+					found = true
+					break
+				}
+			}
+			break
+		}
+		if !found { ok = false; errMsg = "ไม่พบรายการผิดปกติที่ต้องการอัปเดต" }
 	case "delRecord":
 		id := n("id")
 		z := dailySt.Records[:0]
