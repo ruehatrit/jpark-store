@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/csv"
@@ -11,45 +12,52 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type Item struct {
-	ID    int    `json:"id"`
-	Cat   string `json:"cat"`
-	Name  string `json:"name"`
-	Unit  string `json:"unit"`
-	Stock int    `json:"stock"`
-	Min   int    `json:"min"`
+	ID    int    `json:"id" bson:"id"`
+	Cat   string `json:"cat" bson:"cat"`
+	Name  string `json:"name" bson:"name"`
+	Unit  string `json:"unit" bson:"unit"`
+	Stock int    `json:"stock" bson:"stock"`
+	Min   int    `json:"min" bson:"min"`
 }
 
 type Tx struct {
-	ID     int    `json:"id"`
-	Date   string `json:"date"`
-	Type   string `json:"type"`
-	Name   string `json:"name"`
-	Cat    string `json:"cat"`
-	Unit   string `json:"unit"`
-	Person string `json:"person"`
-	Loc    string `json:"loc"`
-	Note   string `json:"note"`
-	ItemID int    `json:"itemId"`
-	Qty    int    `json:"qty"`
+	ID     int    `json:"id" bson:"id"`
+	Date   string `json:"date" bson:"date"`
+	Type   string `json:"type" bson:"type"`
+	Name   string `json:"name" bson:"name"`
+	Cat    string `json:"cat" bson:"cat"`
+	Unit   string `json:"unit" bson:"unit"`
+	Person string `json:"person" bson:"person"`
+	Loc    string `json:"loc" bson:"loc"`
+	Note   string `json:"note" bson:"note"`
+	ItemID int    `json:"itemId" bson:"itemId"`
+	Qty    int    `json:"qty" bson:"qty"`
 }
 
 type User struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-	Role string `json:"role"`
+	ID   int    `json:"id" bson:"id"`
+	Name string `json:"name" bson:"name"`
+	Role string `json:"role" bson:"role"`
 }
 
 type State struct {
-	Items []Item `json:"items"`
-	Txs   []Tx   `json:"txs"`
-	Users []User `json:"users"`
+	Items []Item `json:"items" bson:"items"`
+	Txs   []Tx   `json:"txs" bson:"txs"`
+	Users []User `json:"users" bson:"users"`
 }
 
 var mu sync.Mutex
 var sessionToken string
+var mongoClient *mongo.Client
+var stateCol *mongo.Collection
+var useMongo bool
 
 func initSessionToken() {
 	b := make([]byte, 32)
@@ -98,7 +106,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var a struct {
-		ID       string `json:"id"`
+		ID       string `json:"id" bson:"id"`
 		Password string `json:"password"`
 	}
 	if json.NewDecoder(r.Body).Decode(&a) != nil {
@@ -168,11 +176,14 @@ var st = State{
 
 const dataFile = "/tmp/jpark-store.json"
 
-func load() {
-	b, e := os.ReadFile(dataFile)
-	if e == nil {
-		_ = json.Unmarshal(b, &st)
-	}
+type stateDoc struct {
+	ID    string `bson:"_id"`
+	Items []Item `bson:"items"`
+	Txs   []Tx   `bson:"txs"`
+	Users []User `bson:"users"`
+}
+
+func normalizeState() {
 	// เติมหมวดให้ transaction เก่าที่อาจยังไม่มี cat
 	for i := range st.Txs {
 		if st.Txs[i].Cat == "" {
@@ -186,9 +197,78 @@ func load() {
 	}
 }
 
-func save() {
+func connectMongo() error {
+	uri := os.Getenv("MONGODB_URI")
+	if uri == "" {
+		return fmt.Errorf("MONGODB_URI is not set")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	client, err := mongo.Connect(options.Client().ApplyURI(uri))
+	if err != nil {
+		return err
+	}
+	if err = client.Ping(ctx, nil); err != nil {
+		_ = client.Disconnect(context.Background())
+		return err
+	}
+	mongoClient = client
+	stateCol = client.Database("jpark_store").Collection("app_state")
+	useMongo = true
+	return nil
+}
+
+func load() {
+	if err := connectMongo(); err == nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		var d stateDoc
+		err := stateCol.FindOne(ctx, bson.M{"_id": "main"}).Decode(&d)
+		if err == mongo.ErrNoDocuments {
+			d = stateDoc{ID: "main", Items: st.Items, Txs: st.Txs, Users: st.Users}
+			if _, err = stateCol.InsertOne(ctx, d); err != nil {
+				fmt.Println("MongoDB seed error:", err)
+				useMongo = false
+			}
+		} else if err != nil {
+			fmt.Println("MongoDB load error:", err)
+			useMongo = false
+		} else {
+			st = State{Items: d.Items, Txs: d.Txs, Users: d.Users}
+		}
+		if useMongo {
+			normalizeState()
+			fmt.Println("JPARK Store persistence: MongoDB Atlas")
+			return
+		}
+	} else {
+		fmt.Println("MongoDB unavailable, temporary local fallback:", err)
+	}
+
+	b, e := os.ReadFile(dataFile)
+	if e == nil {
+		_ = json.Unmarshal(b, &st)
+	}
+	normalizeState()
+	fmt.Println("JPARK Store persistence: /tmp fallback (NOT permanent)")
+}
+
+func save() error {
+	if useMongo && stateCol != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		d := stateDoc{ID: "main", Items: st.Items, Txs: st.Txs, Users: st.Users}
+		res, err := stateCol.ReplaceOne(ctx, bson.M{"_id": "main"}, d)
+		if err != nil {
+			return err
+		}
+		if res.MatchedCount == 0 {
+			_, err = stateCol.InsertOne(ctx, d)
+		}
+		return err
+	}
 	b, _ := json.MarshalIndent(st, "", "  ")
-	_ = os.WriteFile(dataFile, b, 0644)
+	return os.WriteFile(dataFile, b, 0644)
 }
 
 func nextItem() int {
@@ -344,7 +424,10 @@ func action(w http.ResponseWriter, r *http.Request) {
 		errMsg = "unknown action"
 	}
 	if ok {
-		save()
+		if err := save(); err != nil {
+			ok = false
+			errMsg = "บันทึกฐานข้อมูลไม่สำเร็จ: " + err.Error()
+		}
 	}
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": ok, "error": errMsg, "time": time.Now()})
 }
