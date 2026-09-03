@@ -302,6 +302,7 @@ func nextUser() int {
 func main() {
 	initSessionToken()
 	load()
+	initDailyCheck()
 	http.HandleFunc("/api/login", login)
 	http.HandleFunc("/api/logout", logout)
 	http.HandleFunc("/api/session", sessionStatus)
@@ -313,6 +314,9 @@ func main() {
 	}))
 	http.HandleFunc("/api/action", requireAuth(action))
 	http.HandleFunc("/api/export", requireAuth(exportCSV))
+	http.HandleFunc("/api/daily/state", requireAuth(dailyStateHandler))
+	http.HandleFunc("/api/daily/action", requireAuth(dailyActionHandler))
+	http.HandleFunc("/api/daily/export", requireAuth(dailyExportCSV))
 	http.Handle("/", http.FileServer(http.Dir(".")))
 	p := os.Getenv("PORT")
 	if p == "" {

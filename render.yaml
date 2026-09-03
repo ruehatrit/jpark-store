@@ -3,5 +3,5 @@ services:
     name: jpark-store
     runtime: go
     plan: free
-    buildCommand: go build -o app .
+    buildCommand: go mod tidy && go build -o app .
     startCommand: ./app
