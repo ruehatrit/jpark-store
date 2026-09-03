@@ -24,12 +24,13 @@ type DailyCheckItem struct {
 }
 
 type DailyCheckResult struct {
-	ItemID   int    `json:"itemId" bson:"itemId"`
-	Group    string `json:"group" bson:"group"`
-	Name     string `json:"name" bson:"name"`
-	Location string `json:"location" bson:"location"`
-	Status   string `json:"status" bson:"status"`
-	Note     string `json:"note" bson:"note"`
+	ItemID       int    `json:"itemId" bson:"itemId"`
+	Group        string `json:"group" bson:"group"`
+	Name         string `json:"name" bson:"name"`
+	Location     string `json:"location" bson:"location"`
+	Status       string `json:"status" bson:"status"`
+	ActionStatus string `json:"actionStatus,omitempty" bson:"actionStatus,omitempty"`
+	Note         string `json:"note" bson:"note"`
 }
 
 type DailyCheckRecord struct {
@@ -327,7 +328,7 @@ func dailyExportCSV(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte{0xEF, 0xBB, 0xBF})
 	cw := csv.NewWriter(w)
 	defer cw.Flush()
-	_ = cw.Write([]string{"วันที่", "รอบตรวจ", "ผู้ตรวจ", "หมวด", "อุปกรณ์", "จุดติดตั้ง", "ผลตรวจ", "หมายเหตุรายการ", "หมายเหตุรวม"})
+	_ = cw.Write([]string{"วันที่", "รอบตรวจ", "ผู้ตรวจ", "หมวด", "อุปกรณ์", "จุดติดตั้ง", "ผลตรวจ", "สถานะการดำเนินการ", "หมายเหตุรายการ", "หมายเหตุรวม"})
 
 	dailyMu.Lock()
 	defer dailyMu.Unlock()
@@ -339,7 +340,7 @@ func dailyExportCSV(w http.ResponseWriter, r *http.Request) {
 			if status != "" && status != "ทั้งหมด" && x.Status != status {
 				continue
 			}
-			_ = cw.Write([]string{rec.Date, rec.Shift, rec.Inspector, x.Group, x.Name, x.Location, x.Status, x.Note, rec.OverallNote})
+			_ = cw.Write([]string{rec.Date, rec.Shift, rec.Inspector, x.Group, x.Name, x.Location, x.Status, x.ActionStatus, x.Note, rec.OverallNote})
 		}
 	}
 }
