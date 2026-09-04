@@ -301,6 +301,11 @@ func dailyActionHandler(w http.ResponseWriter, r *http.Request) {
 	case "updateIssue":
 		recordID := n("recordId")
 		itemID := n("itemId")
+		resultIndex, hasResultIndex := 0, false
+		if _, exists := a["resultIndex"]; exists {
+			resultIndex = n("resultIndex")
+			hasResultIndex = true
+		}
 		found := false
 		for ri := range dailySt.Records {
 			if dailySt.Records[ri].ID != recordID {
@@ -308,7 +313,11 @@ func dailyActionHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			for xi := range dailySt.Records[ri].Results {
 				x := &dailySt.Records[ri].Results[xi]
-				if x.ItemID == itemID && x.Status == "ผิดปกติ" {
+				match := x.ItemID == itemID && x.Status == "ผิดปกติ"
+				if hasResultIndex {
+					match = match && xi == resultIndex
+				}
+				if match {
 					x.ActionStatus = s("actionStatus")
 					x.AssetID = s("assetId")
 					x.Note = s("note")
