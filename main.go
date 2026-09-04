@@ -303,6 +303,7 @@ func main() {
 	initSessionToken()
 	load()
 	initDailyCheck()
+	initAssetRegister()
 	http.HandleFunc("/api/login", login)
 	http.HandleFunc("/api/logout", logout)
 	http.HandleFunc("/api/session", sessionStatus)
@@ -317,6 +318,8 @@ func main() {
 	http.HandleFunc("/api/daily/state", requireAuth(dailyStateHandler))
 	http.HandleFunc("/api/daily/action", requireAuth(dailyActionHandler))
 	http.HandleFunc("/api/daily/export", requireAuth(dailyExportCSV))
+	http.HandleFunc("/api/asset/state", requireAuth(assetStateHandler))
+	http.HandleFunc("/api/asset/action", requireAuth(assetActionHandler))
 	http.Handle("/", http.FileServer(http.Dir(".")))
 	p := os.Getenv("PORT")
 	if p == "" {
