@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -37,6 +38,28 @@ var assetMu sync.Mutex
 var assetCol *mongo.Collection
 var assetSt = AssetState{Assets: []Asset{}}
 
+func normalizeAssetCategory(x *Asset) bool {
+	old := x.Category
+	switch x.Category {
+	case "Barrier":
+		x.Category = "ไม้กั้น"
+	case "Network / Switch":
+		x.Category = "Switch"
+	case "ตู้ไฟ / Control":
+		x.Category = "ตู้ไฟ"
+	case "Display":
+		x.Category = "จอแสดงทะเบียน"
+	case "Kiosk / Payment":
+		n := strings.ToLower(x.Name)
+		if strings.Contains(n, "payment") || strings.Contains(x.Name, "เพเมน") || strings.Contains(x.Name, "ชำระ") {
+			x.Category = "Payment"
+		} else {
+			x.Category = "Kiosk"
+		}
+	}
+	return old != x.Category
+}
+
 func initAssetRegister() {
 	if useMongo && mongoClient != nil {
 		assetCol = mongoClient.Database("jpark_store").Collection("asset_register_state")
@@ -48,6 +71,15 @@ func initAssetRegister() {
 			_, e = assetCol.InsertOne(ctx, assetDoc{ID: "main", Assets: assetSt.Assets})
 		} else if e == nil {
 			assetSt.Assets = d.Assets
+			changed := false
+			for i := range assetSt.Assets {
+				if normalizeAssetCategory(&assetSt.Assets[i]) {
+					changed = true
+				}
+			}
+			if changed {
+				_ = saveAssets()
+			}
 		}
 		if e == nil {
 			return

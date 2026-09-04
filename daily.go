@@ -30,6 +30,7 @@ type DailyCheckResult struct {
 	Location     string `json:"location" bson:"location"`
 	Status       string `json:"status" bson:"status"`
 	ActionStatus string `json:"actionStatus,omitempty" bson:"actionStatus,omitempty"`
+	AssetID      string `json:"assetId,omitempty" bson:"assetId,omitempty"`
 	Note         string `json:"note" bson:"note"`
 }
 
@@ -302,11 +303,14 @@ func dailyActionHandler(w http.ResponseWriter, r *http.Request) {
 		itemID := n("itemId")
 		found := false
 		for ri := range dailySt.Records {
-			if dailySt.Records[ri].ID != recordID { continue }
+			if dailySt.Records[ri].ID != recordID {
+				continue
+			}
 			for xi := range dailySt.Records[ri].Results {
 				x := &dailySt.Records[ri].Results[xi]
 				if x.ItemID == itemID && x.Status == "ผิดปกติ" {
 					x.ActionStatus = s("actionStatus")
+					x.AssetID = s("assetId")
 					x.Note = s("note")
 					found = true
 					break
@@ -314,7 +318,10 @@ func dailyActionHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			break
 		}
-		if !found { ok = false; errMsg = "ไม่พบรายการผิดปกติที่ต้องการอัปเดต" }
+		if !found {
+			ok = false
+			errMsg = "ไม่พบรายการผิดปกติที่ต้องการอัปเดต"
+		}
 	case "delRecord":
 		id := n("id")
 		z := dailySt.Records[:0]
