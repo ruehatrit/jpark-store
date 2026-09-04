@@ -1,17 +1,1387 @@
-<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>JPARK Asset Register</title><style>
-:root{--navy:#082947;--blue:#1678c8;--bg:#f4f7fb;--line:#e1e8f0;--text:#14243a;--muted:#718096;--green:#198f6a;--red:#dc5858;--orange:#ed9b2d}*{box-sizing:border-box}body{margin:0;font-family:"Segoe UI",Tahoma,sans-serif;background:var(--bg);color:var(--text)}.side{position:fixed;inset:0 auto 0 0;width:242px;background:linear-gradient(180deg,#082947,#0b3c68);color:#fff;padding:24px 14px}.brand{padding:0 10px 22px;border-bottom:1px solid #ffffff20;font-size:22px;font-weight:850}.brand small{display:block;font-size:10px;opacity:.65;margin-top:5px}.nav{padding:12px 13px;border-radius:11px;margin:6px 0;cursor:pointer}.nav:hover,.nav.on{background:#ffffff19}.sep{margin-top:20px;border-top:1px solid #ffffff18;padding-top:16px}.main{margin-left:242px;padding:28px 30px}.top{display:flex;justify-content:space-between;align-items:center}.top h1{margin:0}.sub,.muted{color:var(--muted);font-size:12px}.hero{margin:18px 0;background:linear-gradient(135deg,#0b3d70,#1279c6);color:white;border-radius:20px;padding:22px 26px;display:flex;justify-content:space-between}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card,.panel{background:white;border:1px solid var(--line);border-radius:17px;box-shadow:0 10px 30px #193a610d}.card{padding:18px;border-left:4px solid var(--blue)}.card b{display:block;font-size:30px;margin-top:7px}.panel{padding:19px;margin-top:16px}.ph{display:flex;justify-content:space-between;align-items:center;gap:12px}.filters,.form{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}input,select,textarea{width:100%;padding:10px;border:1px solid #ccd8e4;border-radius:10px;background:#fbfdff}label{font-size:11px;color:#637386;font-weight:700;display:block;margin-bottom:5px}button{border:0;border-radius:9px;padding:9px 12px;font-weight:700;cursor:pointer}.primary{background:var(--blue);color:#fff}.red{background:var(--red);color:#fff}.soft{background:#edf3f8;color:#3a5772}.wrap{overflow:auto;border:1px solid #e5ecf3;border-radius:13px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#f1f6fb;text-align:left;color:#49637e}th,td{padding:10px;border-top:1px solid #edf1f5}.status{padding:5px 9px;border-radius:20px;font-size:10px;font-weight:800;display:inline-block}.ok{background:#e8f7f1;color:#147457}.bad{background:#fdecec;color:#b33e3e}.pm{background:#fff1df;color:#9b6107}.empty{text-align:center;padding:30px;color:#8996a5}.hide{display:none}.note{background:#eef7ff;border-left:4px solid var(--blue);padding:11px;border-radius:8px;font-size:12px}@media(max-width:900px){.side{position:static;width:auto}.main{margin:0}.cards,.filters,.form{grid-template-columns:1fr 1fr}}</style></head><body>
-<aside class="side"><div class="brand">JPARK<small>ASSET REGISTER • PARKING EQUIPMENT</small></div><div class="nav on">▣ Asset Register</div><div class="nav" onclick="location.href='/daily.html'">✓ Daily Check</div><div class="nav sep" onclick="location.href='/'">← กลับ JPARK Store</div></aside>
-<main class="main"><div class="top"><div><h1>Asset Register</h1><div class="sub">ทะเบียนอุปกรณ์และระบบลานจอดรถ • หน่วยงาน IT</div></div><img src="hospital-logo.png" style="height:50px;max-width:230px;object-fit:contain"></div><div class="hero"><div><b style="font-size:21px">Parking Equipment Asset Management</b><div style="font-size:12px;opacity:.8;margin-top:7px">เฉพาะ Kiosk • Payment • ไม้กั้น • Radar_Assistant • CCTV • NVR • ตู้ไฟ • จอแสดงทะเบียน</div></div></div>
-<div class="cards"><div class="card">Asset ทั้งหมด<b id="kAll">0</b></div><div class="card">ใช้งานปกติ<b id="kOk">0</b></div><div class="card">ผิดปกติ / งานค้าง<b id="kBad">0</b></div><div class="card">แจ้ง PM / ดำเนินการ<b id="kPM">0</b></div></div>
-<div class="panel"><div class="ph"><div><h3>ทะเบียน Asset</h3><div class="muted">สถานะดึงจาก Daily Check / งานค้างอัตโนมัติ โดยลิงก์ Asset ที่เลือกตอนพบความผิดปกติ</div></div><button class="primary" onclick="showForm()">+ เพิ่ม Asset</button></div><div class="filters"><div style="grid-column:span 2"><label>ค้นหา</label><input id="q" placeholder="Asset ID / อุปกรณ์ / Serial / IP / จุดติดตั้ง" oninput="render()"></div><div><label>ประเภท</label><select id="fc" onchange="render()"><option>ทั้งหมด</option><option>Kiosk</option><option>Payment</option><option>ไม้กั้น</option><option>Radar_Assistant</option><option>CCTV</option><option>NVR</option><option>ตู้ไฟ</option><option>จอแสดงทะเบียน</option></select></div><div><label>สถานะ</label><select id="fs" onchange="render()"><option>ทั้งหมด</option><option>ปกติ</option><option>ผิดปกติ</option></select></div></div><div id="table"></div></div>
-<div id="formPanel" class="panel hide"><div class="ph"><h3 id="formTitle">เพิ่ม Asset</h3><button class="soft" onclick="hideForm()">ปิด</button></div><input type="hidden" id="id"><div class="form"><div><label>Asset ID *</label><input id="assetId" placeholder="เช่น KSK-IN01-01"></div><div><label>ประเภท *</label><select id="category"><option>Kiosk</option><option>Payment</option><option>ไม้กั้น</option><option>Radar_Assistant</option><option>CCTV</option><option>NVR</option><option>ตู้ไฟ</option><option>จอแสดงทะเบียน</option></select></div><div><label>ชื่ออุปกรณ์ *</label><input id="name" placeholder="ควรตรงกับชื่อใน Daily Check"></div><div><label>จุดติดตั้ง *</label><input id="location" list="locs" placeholder="ควรตรงกับจุดใน Daily Check"><datalist id="locs"></datalist></div><div><label>Brand</label><input id="brand"></div><div><label>Model</label><input id="model"></div><div><label>Serial Number</label><input id="serial"></div><div><label>IP Address</label><input id="ip"></div><div><label>วันที่รับ/ติดตั้ง</label><input type="date" id="installDate"></div><div style="grid-column:span 3"><label>หมายเหตุ</label><input id="note"></div></div><div class="note">Daily Check จะให้เลือก <b>Asset ที่ผิดปกติ</b> โดยตรง และ Asset Register จะอ่านสถานะจาก <b>Asset ID ที่เลือกเท่านั้น</b> ไม่เดาจากจุดติดตั้ง จึงรองรับหลายอุปกรณ์ในจุดเดียว</div><div style="margin-top:14px"><button class="primary" onclick="saveAsset()">บันทึก Asset</button></div></div>
-</main><script>
-const $=x=>document.getElementById(x);let assets=[],daily={items:[],records:[]};const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-async function load(){let [a,d]=await Promise.all([fetch('/api/asset/state',{cache:'no-store'}),fetch('/api/daily/state',{cache:'no-store'})]);if(a.status===401){location.href='/';return}let aj=await a.json();assets=aj.assets||[];daily=await d.json();let loc=[...new Set((daily.items||[]).map(x=>x.location).filter(Boolean))];$('locs').innerHTML=loc.map(x=>`<option value="${esc(x)}">`).join('');render()}
-function issueFor(a){let all=[];(daily.records||[]).forEach(r=>(r.results||[]).forEach(x=>{if(x.status!=='ผิดปกติ')return;/* ลิงก์เฉพาะ Asset ID ที่เลือกจาก Daily Check เท่านั้น ห้ามเดาจากจุดติดตั้ง */let linked=!!x.assetId&&x.assetId===a.assetId;if(linked)all.push({...x,date:r.date,recordId:r.id})}));let open=all.filter(x=>!['แก้ไขแล้ว','ปิดงานแล้ว','ซ่อมเสร็จแล้ว'].includes(x.actionStatus));return open.length?open[open.length-1]:null}
-function render(){let q=$('q').value.toLowerCase(),fc=$('fc').value,fs=$('fs').value;let rows=assets.map(a=>({a,i:issueFor(a)})).filter(z=>(!q||Object.values(z.a).join(' ').toLowerCase().includes(q))&&(fc==='ทั้งหมด'||z.a.category===fc)&&(fs==='ทั้งหมด'||(fs==='ผิดปกติ'?!!z.i:!z.i)));$('kAll').textContent=assets.length;$('kBad').textContent=assets.filter(a=>issueFor(a)).length;$('kOk').textContent=assets.length-assets.filter(a=>issueFor(a)).length;$('kPM').textContent=assets.filter(a=>{let i=issueFor(a);return i&&(i.actionStatus||'').includes('PM')}).length;$('table').innerHTML='<div class="wrap"><table><tr><th>Asset ID</th><th>ประเภท / อุปกรณ์</th><th>Brand / Model</th><th>S/N / IP</th><th>จุดติดตั้ง</th><th>สถานะอุปกรณ์</th><th>สถานะงานล่าสุด</th><th></th></tr>'+(rows.length?rows.map(({a,i})=>`<tr><td><b>${esc(a.assetId)}</b></td><td>${esc(a.category)}<br><b>${esc(a.name)}</b></td><td>${esc(a.brand||'-')} / ${esc(a.model||'-')}</td><td>${esc(a.serial||'-')}<br>${esc(a.ip||'-')}</td><td>${esc(a.location)}</td><td><span class="status ${i?'bad':'ok'}">${i?'ผิดปกติ':'ปกติ'}</span></td><td>${i?`<span class="status pm">${esc(i.actionStatus||'รอดำเนินการ')}</span><br><small>${esc(i.date)} • ${esc(i.note||'')}</small>`:'<span class="muted">ไม่มีงานค้าง</span>'}</td><td><button class="soft" onclick="edit(${a.id})">แก้ไข</button> <button class="red" onclick="del(${a.id})">ลบ</button></td></tr>`).join(''):'<tr><td colspan="8"><div class="empty">ยังไม่มี Asset — กด + เพิ่ม Asset</div></td></tr>')+'</table></div>'}
-function showForm(){$('formPanel').classList.remove('hide');$('formTitle').textContent='เพิ่ม Asset';['id','assetId','name','location','brand','model','serial','ip','installDate','note'].forEach(x=>$(x).value='');$('formPanel').scrollIntoView({behavior:'smooth'})}function hideForm(){$('formPanel').classList.add('hide')}
-function edit(id){let a=assets.find(x=>x.id===id);if(!a)return;$('formPanel').classList.remove('hide');$('formTitle').textContent='แก้ไข Asset';Object.keys(a).forEach(k=>{if($(k))$(k).value=a[k]||''});$('formPanel').scrollIntoView({behavior:'smooth'})}
-async function api(o){let r=await fetch('/api/asset/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}),j=await r.json();if(!j.ok)throw Error(j.error);await load()}
-async function saveAsset(){if(!$('assetId').value.trim()||!$('name').value.trim()||!$('location').value.trim())return alert('กรุณากรอก Asset ID, ชื่ออุปกรณ์ และจุดติดตั้ง');let o={action:$('id').value?'update':'add',id:+$('id').value,assetId:$('assetId').value.trim(),category:$('category').value,name:$('name').value.trim(),location:$('location').value.trim(),brand:$('brand').value.trim(),model:$('model').value.trim(),serial:$('serial').value.trim(),ip:$('ip').value.trim(),installDate:$('installDate').value,note:$('note').value.trim()};try{await api(o);hideForm();alert('บันทึก Asset เรียบร้อย')}catch(e){alert(e.message)}}async function del(id){if(confirm('ลบ Asset นี้? ประวัติ Daily Check จะไม่ถูกลบ'))try{await api({action:'delete',id})}catch(e){alert(e.message)}}load();
-</script></body></html>
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JPARK Asset Register</title>
+
+<style>
+:root{
+  --navy:#082947;
+  --blue:#1678c8;
+  --bg:#f4f7fb;
+  --line:#e1e8f0;
+  --text:#14243a;
+  --muted:#718096;
+  --green:#198f6a;
+  --red:#dc5858;
+  --orange:#ed9b2d
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:"Segoe UI",Tahoma,sans-serif;
+  background:var(--bg);
+  color:var(--text)
+}
+
+.side{
+  position:fixed;
+  inset:0 auto 0 0;
+  width:242px;
+  background:linear-gradient(180deg,#082947,#0b3c68);
+  color:#fff;
+  padding:24px 14px
+}
+
+.brand{
+  padding:0 10px 22px;
+  border-bottom:1px solid #ffffff20;
+  font-size:22px;
+  font-weight:850
+}
+
+.brand small{
+  display:block;
+  font-size:10px;
+  opacity:.65;
+  margin-top:5px
+}
+
+.nav{
+  padding:12px 13px;
+  border-radius:11px;
+  margin:6px 0;
+  cursor:pointer
+}
+
+.nav:hover,.nav.on{background:#ffffff19}
+
+.sep{
+  margin-top:20px;
+  border-top:1px solid #ffffff18;
+  padding-top:16px
+}
+
+.main{
+  margin-left:242px;
+  padding:28px 30px
+}
+
+.top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center
+}
+
+.top h1{margin:0}
+
+.sub,.muted{
+  color:var(--muted);
+  font-size:12px
+}
+
+.hero{
+  margin:18px 0;
+  background:linear-gradient(135deg,#0b3d70,#1279c6);
+  color:white;
+  border-radius:20px;
+  padding:22px 26px;
+  display:flex;
+  justify-content:space-between
+}
+
+.cards{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:14px
+}
+
+.card,.panel{
+  background:white;
+  border:1px solid var(--line);
+  border-radius:17px;
+  box-shadow:0 10px 30px #193a610d
+}
+
+.card{
+  padding:18px;
+  border-left:4px solid var(--blue)
+}
+
+.card b{
+  display:block;
+  font-size:30px;
+  margin-top:7px
+}
+
+.panel{
+  padding:19px;
+  margin-top:16px
+}
+
+.ph{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px
+}
+
+.actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap
+}
+
+.filters,.form{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  margin:14px 0
+}
+
+input,select,textarea{
+  width:100%;
+  padding:10px;
+  border:1px solid #ccd8e4;
+  border-radius:10px;
+  background:#fbfdff
+}
+
+label{
+  font-size:11px;
+  color:#637386;
+  font-weight:700;
+  display:block;
+  margin-bottom:5px
+}
+
+button{
+  border:0;
+  border-radius:9px;
+  padding:9px 12px;
+  font-weight:700;
+  cursor:pointer
+}
+
+.primary{
+  background:var(--blue);
+  color:#fff
+}
+
+.green{
+  background:var(--green);
+  color:#fff
+}
+
+.red{
+  background:var(--red);
+  color:#fff
+}
+
+.soft{
+  background:#edf3f8;
+  color:#3a5772
+}
+
+.wrap{
+  overflow:auto;
+  border:1px solid #e5ecf3;
+  border-radius:13px
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:12px
+}
+
+th{
+  background:#f1f6fb;
+  text-align:left;
+  color:#49637e
+}
+
+th,td{
+  padding:10px;
+  border-top:1px solid #edf1f5
+}
+
+.status{
+  padding:5px 9px;
+  border-radius:20px;
+  font-size:10px;
+  font-weight:800;
+  display:inline-block
+}
+
+.ok{
+  background:#e8f7f1;
+  color:#147457
+}
+
+.bad{
+  background:#fdecec;
+  color:#b33e3e
+}
+
+.pm{
+  background:#fff1df;
+  color:#9b6107
+}
+
+.empty{
+  text-align:center;
+  padding:30px;
+  color:#8996a5
+}
+
+.hide{display:none}
+
+.note{
+  background:#eef7ff;
+  border-left:4px solid var(--blue);
+  padding:11px;
+  border-radius:8px;
+  font-size:12px
+}
+
+@media(max-width:900px){
+  .side{
+    position:static;
+    width:auto
+  }
+
+  .main{margin:0}
+
+  .cards,.filters,.form{
+    grid-template-columns:1fr 1fr
+  }
+}
+</style>
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<aside class="side">
+
+  <div class="brand">
+    JPARK
+    <small>ASSET REGISTER • PARKING EQUIPMENT</small>
+  </div>
+
+  <div class="nav on">
+    ▣ Asset Register
+  </div>
+
+  <div class="nav" onclick="location.href='/daily.html'">
+    ✓ Daily Check
+  </div>
+
+  <div class="nav sep" onclick="location.href='/'">
+    ⌂ HOME
+  </div>
+
+</aside>
+
+
+<!-- MAIN -->
+<main class="main">
+
+<div class="top">
+
+  <div>
+    <h1>Asset Register</h1>
+    <div class="sub">
+      ทะเบียนอุปกรณ์และระบบลานจอดรถ • หน่วยงาน IT
+    </div>
+  </div>
+
+  <img
+    src="hospital-logo.png"
+    style="height:50px;max-width:230px;object-fit:contain"
+  >
+
+</div>
+
+
+<div class="hero">
+
+  <div>
+
+    <b style="font-size:21px">
+      Parking Equipment Asset Management
+    </b>
+
+    <div style="font-size:12px;opacity:.8;margin-top:7px">
+      เฉพาะ Kiosk • Payment • ไม้กั้น • Radar_Assistant • CCTV • NVR • ตู้ไฟ • จอแสดงทะเบียน
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- SUMMARY -->
+<div class="cards">
+
+  <div class="card">
+    Asset ทั้งหมด
+    <b id="kAll">0</b>
+  </div>
+
+  <div class="card">
+    ใช้งานปกติ
+    <b id="kOk">0</b>
+  </div>
+
+  <div class="card">
+    ผิดปกติ / งานค้าง
+    <b id="kBad">0</b>
+  </div>
+
+  <div class="card">
+    แจ้ง PM / ดำเนินการ
+    <b id="kPM">0</b>
+  </div>
+
+</div>
+
+
+<!-- ASSET TABLE -->
+<div class="panel">
+
+  <div class="ph">
+
+    <div>
+
+      <h3>ทะเบียน Asset</h3>
+
+      <div class="muted">
+        สถานะดึงจาก Daily Check / งานค้างอัตโนมัติ
+        โดยลิงก์ Asset ที่เลือกตอนพบความผิดปกติ
+      </div>
+
+    </div>
+
+    <div class="actions">
+
+      <button class="green" onclick="exportExcel()">
+        ⇩ Export Excel
+      </button>
+
+      <button class="primary" onclick="showForm()">
+        + เพิ่ม Asset
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <!-- FILTER -->
+  <div class="filters">
+
+    <div style="grid-column:span 2">
+
+      <label>ค้นหา</label>
+
+      <input
+        id="q"
+        placeholder="Asset ID / อุปกรณ์ / Serial / IP / จุดติดตั้ง"
+        oninput="render()"
+      >
+
+    </div>
+
+
+    <div>
+
+      <label>ประเภท</label>
+
+      <select id="fc" onchange="render()">
+
+        <option>ทั้งหมด</option>
+        <option>Kiosk</option>
+        <option>Payment</option>
+        <option>ไม้กั้น</option>
+        <option>Radar_Assistant</option>
+        <option>CCTV</option>
+        <option>NVR</option>
+        <option>ตู้ไฟ</option>
+        <option>จอแสดงทะเบียน</option>
+
+      </select>
+
+    </div>
+
+
+    <div>
+
+      <label>สถานะ</label>
+
+      <select id="fs" onchange="render()">
+
+        <option>ทั้งหมด</option>
+        <option>ปกติ</option>
+        <option>ผิดปกติ</option>
+
+      </select>
+
+    </div>
+
+  </div>
+
+
+  <div id="table"></div>
+
+</div>
+
+
+<!-- FORM -->
+<div id="formPanel" class="panel hide">
+
+  <div class="ph">
+
+    <h3 id="formTitle">
+      เพิ่ม Asset
+    </h3>
+
+    <button class="soft" onclick="hideForm()">
+      ปิด
+    </button>
+
+  </div>
+
+
+  <input type="hidden" id="id">
+
+
+  <div class="form">
+
+
+    <div>
+
+      <label>Asset ID *</label>
+
+      <input
+        id="assetId"
+        placeholder="เช่น KSK-IN01-01"
+      >
+
+    </div>
+
+
+    <div>
+
+      <label>ประเภท *</label>
+
+      <select id="category">
+
+        <option>Kiosk</option>
+        <option>Payment</option>
+        <option>ไม้กั้น</option>
+        <option>Radar_Assistant</option>
+        <option>CCTV</option>
+        <option>NVR</option>
+        <option>ตู้ไฟ</option>
+        <option>จอแสดงทะเบียน</option>
+
+      </select>
+
+    </div>
+
+
+    <div>
+
+      <label>ชื่ออุปกรณ์ *</label>
+
+      <input
+        id="name"
+        placeholder="ควรตรงกับชื่อใน Daily Check"
+      >
+
+    </div>
+
+
+    <div>
+
+      <label>จุดติดตั้ง *</label>
+
+      <input
+        id="location"
+        list="locs"
+        placeholder="ควรตรงกับจุดใน Daily Check"
+      >
+
+      <datalist id="locs"></datalist>
+
+    </div>
+
+
+    <div>
+
+      <label>Brand</label>
+
+      <input id="brand">
+
+    </div>
+
+
+    <div>
+
+      <label>Model</label>
+
+      <input id="model">
+
+    </div>
+
+
+    <div>
+
+      <label>Serial Number</label>
+
+      <input id="serial">
+
+    </div>
+
+
+    <div>
+
+      <label>IP Address</label>
+
+      <input id="ip">
+
+    </div>
+
+
+    <div>
+
+      <label>วันที่รับ/ติดตั้ง</label>
+
+      <input
+        type="date"
+        id="installDate"
+      >
+
+    </div>
+
+
+    <div style="grid-column:span 3">
+
+      <label>หมายเหตุ</label>
+
+      <input id="note">
+
+    </div>
+
+  </div>
+
+
+  <div class="note">
+
+    Daily Check จะให้เลือก
+    <b>Asset ที่ผิดปกติ</b>
+    โดยตรง และ Asset Register จะอ่านสถานะจาก
+    <b>Asset ID ที่เลือกเท่านั้น</b>
+    ไม่เดาจากจุดติดตั้ง จึงรองรับหลายอุปกรณ์ในจุดเดียว
+
+  </div>
+
+
+  <div style="margin-top:14px">
+
+    <button
+      class="primary"
+      onclick="saveAsset()"
+    >
+      บันทึก Asset
+    </button>
+
+  </div>
+
+</div>
+
+</main>
+
+
+<script>
+
+const $ = x => document.getElementById(x);
+
+let assets = [];
+
+let daily = {
+  items:[],
+  records:[]
+};
+
+
+const esc = s =>
+  String(s ?? '').replace(
+    /[&<>"']/g,
+    m => ({
+      '&':'&amp;',
+      '<':'&lt;',
+      '>':'&gt;',
+      '"':'&quot;',
+      "'":'&#39;'
+    }[m])
+  );
+
+
+async function load(){
+
+  let [a,d] = await Promise.all([
+
+    fetch('/api/asset/state',{
+      cache:'no-store'
+    }),
+
+    fetch('/api/daily/state',{
+      cache:'no-store'
+    })
+
+  ]);
+
+
+  if(a.status === 401){
+
+    location.href='/';
+
+    return;
+
+  }
+
+
+  let aj = await a.json();
+
+  assets = aj.assets || [];
+
+  daily = await d.json();
+
+
+  let loc = [
+    ...new Set(
+      (daily.items || [])
+      .map(x => x.location)
+      .filter(Boolean)
+    )
+  ];
+
+
+  $('locs').innerHTML =
+    loc
+    .map(x => `<option value="${esc(x)}">`)
+    .join('');
+
+
+  render();
+
+}
+
+
+
+function issueFor(a){
+
+  let all = [];
+
+
+  (daily.records || []).forEach(r =>
+
+    (r.results || []).forEach(x => {
+
+      if(x.status !== 'ผิดปกติ') return;
+
+
+      /*
+        ลิงก์เฉพาะ Asset ID
+        ที่เลือกจาก Daily Check เท่านั้น
+      */
+
+      let linked =
+        !!x.assetId &&
+        x.assetId === a.assetId;
+
+
+      if(linked){
+
+        all.push({
+          ...x,
+          date:r.date,
+          recordId:r.id
+        });
+
+      }
+
+    })
+
+  );
+
+
+  let open = all.filter(
+    x =>
+      ![
+        'แก้ไขแล้ว',
+        'ปิดงานแล้ว',
+        'ซ่อมเสร็จแล้ว'
+      ].includes(x.actionStatus)
+  );
+
+
+  return open.length
+    ? open[open.length - 1]
+    : null;
+
+}
+
+
+
+function getFilteredRows(){
+
+  let q =
+    $('q').value.toLowerCase();
+
+
+  let fc =
+    $('fc').value;
+
+
+  let fs =
+    $('fs').value;
+
+
+  return assets
+    .map(a => ({
+      a,
+      i:issueFor(a)
+    }))
+    .filter(z =>
+
+      (
+        !q ||
+        Object.values(z.a)
+        .join(' ')
+        .toLowerCase()
+        .includes(q)
+      )
+
+      &&
+
+      (
+        fc === 'ทั้งหมด' ||
+        z.a.category === fc
+      )
+
+      &&
+
+      (
+        fs === 'ทั้งหมด' ||
+        (
+          fs === 'ผิดปกติ'
+          ? !!z.i
+          : !z.i
+        )
+      )
+
+    );
+
+}
+
+
+
+function render(){
+
+  let rows = getFilteredRows();
+
+
+  $('kAll').textContent =
+    assets.length;
+
+
+  let badCount =
+    assets.filter(
+      a => issueFor(a)
+    ).length;
+
+
+  $('kBad').textContent =
+    badCount;
+
+
+  $('kOk').textContent =
+    assets.length - badCount;
+
+
+  $('kPM').textContent =
+    assets.filter(a => {
+
+      let i = issueFor(a);
+
+      return (
+        i &&
+        (i.actionStatus || '')
+        .includes('PM')
+      );
+
+    }).length;
+
+
+
+  $('table').innerHTML =
+
+  '<div class="wrap">'+
+
+  '<table>'+
+
+  '<tr>'+
+
+  '<th>Asset ID</th>'+
+  '<th>ประเภท / อุปกรณ์</th>'+
+  '<th>Brand / Model</th>'+
+  '<th>S/N / IP</th>'+
+  '<th>จุดติดตั้ง</th>'+
+  '<th>สถานะอุปกรณ์</th>'+
+  '<th>สถานะงานล่าสุด</th>'+
+  '<th></th>'+
+
+  '</tr>'+
+
+  (
+    rows.length
+
+    ?
+
+    rows.map(({a,i}) => `
+
+      <tr>
+
+        <td>
+          <b>${esc(a.assetId)}</b>
+        </td>
+
+        <td>
+          ${esc(a.category)}
+          <br>
+          <b>${esc(a.name)}</b>
+        </td>
+
+        <td>
+          ${esc(a.brand || '-')}
+          /
+          ${esc(a.model || '-')}
+        </td>
+
+        <td>
+          ${esc(a.serial || '-')}
+          <br>
+          ${esc(a.ip || '-')}
+        </td>
+
+        <td>
+          ${esc(a.location)}
+        </td>
+
+        <td>
+
+          <span class="status ${i ? 'bad':'ok'}">
+
+            ${i ? 'ผิดปกติ':'ปกติ'}
+
+          </span>
+
+        </td>
+
+        <td>
+
+          ${
+            i
+            ?
+            `
+            <span class="status pm">
+              ${esc(i.actionStatus || 'รอดำเนินการ')}
+            </span>
+
+            <br>
+
+            <small>
+              ${esc(i.date)}
+              •
+              ${esc(i.note || '')}
+            </small>
+            `
+            :
+            '<span class="muted">ไม่มีงานค้าง</span>'
+          }
+
+        </td>
+
+        <td>
+
+          <button
+            class="soft"
+            onclick="edit(${a.id})"
+          >
+            แก้ไข
+          </button>
+
+          <button
+            class="red"
+            onclick="del(${a.id})"
+          >
+            ลบ
+          </button>
+
+        </td>
+
+      </tr>
+
+    `).join('')
+
+    :
+
+    '<tr>'+
+    '<td colspan="8">'+
+    '<div class="empty">'+
+    'ยังไม่มี Asset — กด + เพิ่ม Asset'+
+    '</div>'+
+    '</td>'+
+    '</tr>'
+
+  )
+
+  +
+
+  '</table>'+
+  '</div>';
+
+}
+
+
+
+function showForm(){
+
+  $('formPanel')
+    .classList
+    .remove('hide');
+
+
+  $('formTitle').textContent =
+    'เพิ่ม Asset';
+
+
+  [
+    'id',
+    'assetId',
+    'name',
+    'location',
+    'brand',
+    'model',
+    'serial',
+    'ip',
+    'installDate',
+    'note'
+  ]
+  .forEach(
+    x => $(x).value=''
+  );
+
+
+  $('formPanel')
+    .scrollIntoView({
+      behavior:'smooth'
+    });
+
+}
+
+
+
+function hideForm(){
+
+  $('formPanel')
+    .classList
+    .add('hide');
+
+}
+
+
+
+function edit(id){
+
+  let a =
+    assets.find(
+      x => x.id === id
+    );
+
+
+  if(!a) return;
+
+
+  $('formPanel')
+    .classList
+    .remove('hide');
+
+
+  $('formTitle').textContent =
+    'แก้ไข Asset';
+
+
+  Object.keys(a)
+    .forEach(k => {
+
+      if($(k))
+        $(k).value =
+          a[k] || '';
+
+    });
+
+
+  $('formPanel')
+    .scrollIntoView({
+      behavior:'smooth'
+    });
+
+}
+
+
+
+async function api(o){
+
+  let r =
+    await fetch(
+      '/api/asset/action',
+      {
+        method:'POST',
+        headers:{
+          'Content-Type':
+          'application/json'
+        },
+        body:
+          JSON.stringify(o)
+      }
+    );
+
+
+  let j =
+    await r.json();
+
+
+  if(!j.ok)
+    throw Error(j.error);
+
+
+  await load();
+
+}
+
+
+
+async function saveAsset(){
+
+  if(
+    !$('assetId').value.trim()
+    ||
+    !$('name').value.trim()
+    ||
+    !$('location').value.trim()
+  ){
+
+    return alert(
+      'กรุณากรอก Asset ID, ชื่ออุปกรณ์ และจุดติดตั้ง'
+    );
+
+  }
+
+
+  let o = {
+
+    action:
+      $('id').value
+      ? 'update'
+      : 'add',
+
+    id:
+      +$('id').value,
+
+    assetId:
+      $('assetId').value.trim(),
+
+    category:
+      $('category').value,
+
+    name:
+      $('name').value.trim(),
+
+    location:
+      $('location').value.trim(),
+
+    brand:
+      $('brand').value.trim(),
+
+    model:
+      $('model').value.trim(),
+
+    serial:
+      $('serial').value.trim(),
+
+    ip:
+      $('ip').value.trim(),
+
+    installDate:
+      $('installDate').value,
+
+    note:
+      $('note').value.trim()
+
+  };
+
+
+  try{
+
+    await api(o);
+
+    hideForm();
+
+    alert(
+      'บันทึก Asset เรียบร้อย'
+    );
+
+  }
+  catch(e){
+
+    alert(e.message);
+
+  }
+
+}
+
+
+
+async function del(id){
+
+  if(
+    confirm(
+      'ลบ Asset นี้? ประวัติ Daily Check จะไม่ถูกลบ'
+    )
+  ){
+
+    try{
+
+      await api({
+        action:'delete',
+        id
+      });
+
+    }
+    catch(e){
+
+      alert(e.message);
+
+    }
+
+  }
+
+}
+
+
+
+/* =========================
+   EXPORT EXCEL
+========================= */
+
+function excelEscape(v){
+
+  return String(v ?? '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+
+}
+
+
+function exportExcel(){
+
+  let rows =
+    getFilteredRows();
+
+
+  if(!rows.length){
+
+    alert(
+      'ไม่มีข้อมูล Asset สำหรับ Export'
+    );
+
+    return;
+
+  }
+
+
+  let headers = [
+
+    'Asset ID',
+    'ประเภท',
+    'ชื่ออุปกรณ์',
+    'Brand',
+    'Model',
+    'Serial Number',
+    'IP Address',
+    'จุดติดตั้ง',
+    'วันที่รับ/ติดตั้ง',
+    'สถานะอุปกรณ์',
+    'สถานะงานล่าสุด',
+    'วันที่พบปัญหา',
+    'รายละเอียดปัญหา',
+    'หมายเหตุ Asset'
+
+  ];
+
+
+  let data =
+    rows.map(({a,i}) => [
+
+      a.assetId || '',
+      a.category || '',
+      a.name || '',
+      a.brand || '',
+      a.model || '',
+      a.serial || '',
+      a.ip || '',
+      a.location || '',
+      a.installDate || '',
+
+      i
+        ? 'ผิดปกติ'
+        : 'ปกติ',
+
+      i
+        ? (i.actionStatus || 'รอดำเนินการ')
+        : 'ไม่มีงานค้าง',
+
+      i
+        ? (i.date || '')
+        : '',
+
+      i
+        ? (i.note || '')
+        : '',
+
+      a.note || ''
+
+    ]);
+
+
+  let xml =
+`<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook
+ xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+
+<Worksheet ss:Name="Asset Register">
+
+<Table>
+
+<Row>
+${
+  headers.map(
+    h =>
+    `<Cell><Data ss:Type="String">${excelEscape(h)}</Data></Cell>`
+  ).join('')
+}
+</Row>
+
+${
+  data.map(row =>
+
+    `<Row>${
+      row.map(
+        v =>
+        `<Cell><Data ss:Type="String">${excelEscape(v)}</Data></Cell>`
+      ).join('')
+    }</Row>`
+
+  ).join('')
+}
+
+</Table>
+
+</Worksheet>
+
+</Workbook>`;
+
+
+  let blob =
+    new Blob(
+      [
+        '\ufeff',
+        xml
+      ],
+      {
+        type:
+        'application/vnd.ms-excel;charset=utf-8'
+      }
+    );
+
+
+  let url =
+    URL.createObjectURL(blob);
+
+
+  let a =
+    document.createElement('a');
+
+
+  let now =
+    new Date();
+
+
+  let date =
+    now.getFullYear()
+    +
+    '-'
+    +
+    String(
+      now.getMonth()+1
+    ).padStart(2,'0')
+    +
+    '-'
+    +
+    String(
+      now.getDate()
+    ).padStart(2,'0');
+
+
+  a.href = url;
+
+  a.download =
+    'JPARK_Asset_Register_'
+    +
+    date
+    +
+    '.xls';
+
+
+  document.body
+    .appendChild(a);
+
+
+  a.click();
+
+  a.remove();
+
+
+  URL.revokeObjectURL(url);
+
+}
+
+
+
+load();
+
+</script>
+
+</body>
+</html>
