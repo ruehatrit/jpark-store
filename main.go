@@ -357,6 +357,20 @@ func action(w http.ResponseWriter, r *http.Request) {
 	switch act {
 	case "addItem":
 		st.Items = append(st.Items, Item{nextItem(), s("cat"), s("name"), s("unit"), 0, n("min")})
+	case "updateMin":
+		id := n("id")
+		found := false
+		for i := range st.Items {
+			if st.Items[i].ID == id {
+				st.Items[i].Min = n("min")
+				found = true
+				break
+			}
+		}
+		if !found {
+			ok = false
+			errMsg = "ไม่พบรายการ"
+		}
 	case "delItem":
 		id := n("id")
 		z := st.Items[:0]
