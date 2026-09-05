@@ -24,6 +24,7 @@ type Asset struct {
 	Location    string `json:"location" bson:"location"`
 	InstallDate string `json:"installDate" bson:"installDate"`
 	Note        string `json:"note" bson:"note"`
+	MinStock    int    `json:"minStock" bson:"minStock"`
 	Active      bool   `json:"active" bson:"active"`
 }
 type AssetState struct {
@@ -163,6 +164,17 @@ func assetActionHandler(w http.ResponseWriter, r *http.Request) {
 			ok = false
 			errMsg = "ไม่พบ Asset"
 		}
+	case "setMinStock":
+		id := n("id")
+		found := false
+		for i := range assetSt.Assets {
+			if assetSt.Assets[i].ID == id {
+				assetSt.Assets[i].MinStock = n("minStock")
+				found = true
+				break
+			}
+		}
+		if !found { ok = false; errMsg = "ไม่พบ Asset" }
 	case "delete":
 		id := n("id")
 		z := assetSt.Assets[:0]
