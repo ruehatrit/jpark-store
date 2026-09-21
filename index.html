@@ -36,7 +36,30 @@ function openStoreHome(){$('itHome').classList.add('hide');let n=document.queryS
 function openStoreReport(){$('itHome').classList.add('hide');let n=document.querySelector('.nav[onclick*=\"report\"]');page('report',n)}
 function toggleHomeDark(){$('itHome').classList.toggle('dark-home')}
 function issueClosed(s){return ['แก้ไขแล้ว','ปิดงานแล้ว','ซ่อมเสร็จแล้ว'].includes(s)}
-async function refreshHome(){if(!$('itHome'))return;$('hkStore').textContent=items.length;$('hkLow').textContent=items.filter(i=>i.cat==='วัสดุสิ้นเปลือง'&&i.stock<=i.min).length;try{let r=await fetch('/api/daily/state',{cache:'no-store'});if(r.ok){let d=await r.json(),recs=d.records||[],tr=today(),todayRecs=recs.filter(x=>x.date===tr),issues=[];recs.forEach(rec=>(rec.results||[]).forEach(x=>{if(x.status==='ผิดปกติ'&&!issueClosed(x.actionStatus))issues.push({...x,date:rec.date})}));$('hkDaily').textContent=todayRecs.length;$('hkIssues').textContent=issues.length;$('homeIssues').innerHTML=issues.length?issues.slice().reverse().slice(0,5).map(x=>`<div class=\"home-alert\"><div><b>${esc(x.name||'อุปกรณ์')}</b><br><small style=\"color:#718096\">${esc(x.location||'-')} • ${esc(x.note||'ไม่มีรายละเอียด')}</small></div><span class=\"home-badge\">${esc(x.actionStatus||'รอดำเนินการ')}</span></div>`).join(''):'<div class=\"empty\">ไม่มีงานผิดปกติค้างอยู่</div>'}}catch(e){$('homeIssues').innerHTML='<div class=\"empty\">ไม่สามารถโหลดงานค้างได้</div>'}}
+async function refreshHome(){
+ if(!$('itHome'))return;
+ $('hkStore').textContent=items.length;
+ $('hkLow').textContent=items.filter(i=>i.cat==='วัสดุสิ้นเปลือง'&&i.stock<=i.min).length;
+ try{
+  let r=await fetch('/api/daily/state',{cache:'no-store'});
+  if(r.ok){
+   let d=await r.json(),recs=d.records||[],tr=today(),todayRecs=recs.filter(x=>x.date===tr),raw=[];
+   recs.forEach(rec=>(rec.results||[]).forEach((x,resultIndex)=>{
+    if(x.status==='ผิดปกติ')raw.push({...x,resultIndex,recordId:rec.id,date:rec.date});
+   }));
+   let latest=new Map();
+   raw.forEach(x=>{
+    let key=x.assetId?'asset:'+x.assetId:'item:'+x.itemId+'|'+(x.location||'')+'|'+(x.name||'');
+    let p=latest.get(key);
+    if(!p||String(x.date||'')>String(p.date||'')||(String(x.date||'')===String(p.date||'')&&Number(x.recordId||0)>=Number(p.recordId||0)))latest.set(key,x);
+   });
+   let issues=[...latest.values()].filter(x=>!issueClosed(x.actionStatus));
+   $('hkDaily').textContent=todayRecs.length;
+   $('hkIssues').textContent=issues.length;
+   $('homeIssues').innerHTML=issues.length?issues.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,5).map(x=>`<div class="home-alert"><div><b>${esc(x.name||'อุปกรณ์')}</b><br><small style="color:#718096">${esc(x.location||'-')} • ${esc(x.note||'ไม่มีรายละเอียด')}</small></div><span class="home-badge">${esc(x.actionStatus||'รอดำเนินการ')}</span></div>`).join(''):'<div class="empty">ไม่มีงานผิดปกติค้างอยู่</div>';
+  }
+ }catch(e){$('homeIssues').innerHTML='<div class="empty">ไม่สามารถโหลดงานค้างได้</div>'}
+}
 async function checkSession(){try{let saved=localStorage.getItem('jparkRememberLogin');if(saved){try{let c=JSON.parse(saved);$('loginId').value=c.id||'';$('loginPass').value=c.password||'';$('rememberLogin').checked=true}catch(e){localStorage.removeItem('jparkRememberLogin')}}let r=await fetch('/api/session',{cache:'no-store'}),j=await r.json();if(j.authenticated){$('loginOverlay').style.display='none';await load();showITHome()}else{$('loginOverlay').style.display='grid';setTimeout(()=>$(saved?'loginPass':'loginId').focus(),50)}}catch(e){$('loginOverlay').style.display='grid'}}
 async function doLogin(){let id=$('loginId').value.trim(),password=$('loginPass').value;$('loginError').textContent='';if(!id||!password){$('loginError').textContent='กรุณากรอก ID และ Password';return}try{let r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,password})}),j=await r.json();if(!r.ok||!j.ok){$('loginError').textContent=j.error||'เข้าสู่ระบบไม่สำเร็จ';return}if($('rememberLogin').checked)localStorage.setItem('jparkRememberLogin',JSON.stringify({id,password}));else localStorage.removeItem('jparkRememberLogin');if(!$('rememberLogin').checked)$('loginPass').value='';$('loginOverlay').style.display='none';await load();showITHome()}catch(e){$('loginError').textContent='ไม่สามารถเชื่อมต่อระบบได้'}}
 async function doLogout(){try{await fetch('/api/logout',{method:'POST'})}catch(e){}items=[];txs=[];users=[];if($('itHome'))$('itHome').classList.add('hide');$('loginPass').value='';$('loginOverlay').style.display='grid';setTimeout(()=>$('loginId').focus(),50)}
