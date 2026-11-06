@@ -32,9 +32,9 @@ button,.menu-card,.nav,.home-kpi,.kpi{transition:transform .2s ease,box-shadow .
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;scroll-behavior:auto!important}}
 
 /* CCTV Monitoring highlight on JPARK Modern Glass */
-.menu-grid .menu-card:first-child{border:1px solid #8fc9ff;background:linear-gradient(135deg,#eaf6ffec,#ffffffcc);box-shadow:0 12px 34px #2581cc23;position:relative}
-.menu-grid .menu-card:first-child:after{content:"LIVE MONITOR";position:absolute;top:17px;right:18px;background:#dff1ff;color:#176cb1;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.7px}
-.menu-grid .menu-card:first-child .menu-icon{background:linear-gradient(145deg,#1679c8,#56b7eb)!important;color:#fff!important}
+.menu-grid .menu-card[onclick*="/cctv.html"]{border:1px solid #8fc9ff;background:linear-gradient(135deg,#eaf6ffec,#ffffffcc);box-shadow:0 12px 34px #2581cc23;position:relative}
+.menu-grid .menu-card[onclick*="/cctv.html"]:after{content:"LIVE MONITOR";position:absolute;top:17px;right:18px;background:#dff1ff;color:#176cb1;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.7px}
+.menu-grid .menu-card[onclick*="/cctv.html"] .menu-icon{background:linear-gradient(145deg,#1679c8,#56b7eb)!important;color:#fff!important}
 
 /* JPARK Glass Modern 2026 — shared visual system */
 :root{--navy:#112b53;--navy2:#235c99;--blue:#377df0;--sky:#7bd3ff;--bg:#edf5ff;--line:#d5e5f5;--text:#1b3456;--muted:#66809d;--green:#109b7a;--red:#db4965;--orange:#e49a38;--purple:#8565dc}
@@ -51,8 +51,8 @@ button,.primary,.login-btn{transition:transform .18s ease,filter .18s ease}butto
 .home-top,.home-wrap{max-width:1450px}.home-hero h2{font-size:clamp(23px,2.7vw,34px)}.home-kpi strong{font-size:clamp(26px,2.7vw,36px)}.home-section-title h3{font-size:20px}
 #cctvHomeAlert{backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:18px!important;box-shadow:0 12px 30px #254b7622!important;transition:background .25s,border-color .25s}
 #cctvHomeAlert a{color:inherit!important;text-decoration:underline;text-underline-offset:3px}
-.menu-grid .menu-card:first-child{background:linear-gradient(135deg,#d8effff0,#ffffffd9)!important;border:1px solid #9dd2ff!important;position:relative}
-.menu-grid .menu-card:first-child:after{content:'LIVE CCTV';position:absolute;top:12px;right:14px;font-size:10px;font-weight:800;letter-spacing:.6px;color:#145f9b;background:#d8efff;border-radius:99px;padding:5px 9px}
+.menu-grid .menu-card[onclick*="/cctv.html"]{background:linear-gradient(135deg,#d8effff0,#ffffffd9)!important;border:1px solid #9dd2ff!important;position:relative}
+.menu-grid .menu-card[onclick*="/cctv.html"]:after{content:'LIVE CCTV';position:absolute;top:12px;right:14px;font-size:10px;font-weight:800;letter-spacing:.6px;color:#145f9b;background:#d8efff;border-radius:99px;padding:5px 9px}
 @media(max-width:760px){.home-hero{padding:23px!important}.home-kpi,.menu-card{border-radius:17px!important}main,.main{padding-left:16px!important;padding-right:16px!important}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 
@@ -180,3 +180,5 @@ checkSession();
 /* PM due popup: only after login and while home dashboard is visible. */
 (function(){const now=new Date(),m=now.getMonth()+1,quarterEnd=[3,6,9,12].includes(m)&&now.getDate()===new Date(now.getFullYear(),m,0).getDate();if(!quarterEnd)return;const q=now.getFullYear()+'-Q'+Math.ceil(m/3);let shown=false;async function check(){if(shown||document.getElementById('itHome')?.classList.contains('hide'))return;try{const r=await fetch('/api/pm?quarter='+q);if(!r.ok)return;const data=await r.json();const a=await fetch('/api/asset/state');if(!a.ok)return;const assets=(await a.json()).assets||[];const done=Object.values(data.results||{}).filter(x=>x.status==='normal'||x.status==='abnormal').length;if(done>=assets.filter(x=>x.active!==false).length+25+8)return;shown=true;const overlay=document.createElement('div');overlay.id='pmReminder';overlay.style.cssText='position:fixed;inset:0;background:#06172bbd;z-index:99999;display:grid;place-items:center;padding:18px';overlay.innerHTML='<div style="background:#17304b;color:white;max-width:440px;width:100%;padding:28px;border:1px solid #6c91b5;border-radius:20px;box-shadow:0 20px 70px #0008;font-family:system-ui"><div style="font-size:34px">🔔</div><h2 style="margin:10px 0">ถึงกำหนดตรวจ PM แล้ว!</h2><p>วันนี้เป็นวันสุดท้ายของรอบ '+q+' กรุณาตรวจอุปกรณ์ Asset Register, CCTV และ Guidance</p><div style="display:flex;gap:10px;flex-wrap:wrap"><a href="/pm.html" style="background:#2285cf;color:white;padding:12px 16px;border-radius:10px;text-decoration:none;font-weight:bold">เริ่มตรวจ PM</a><button id="pmDismiss" style="padding:12px 16px;border-radius:10px;cursor:pointer">เตือนภายหลัง</button></div></div>';document.body.appendChild(overlay);document.getElementById('pmDismiss').onclick=()=>overlay.remove()}catch(e){}}setInterval(check,15000);setTimeout(check,1200)})();
 </script></body></html>
+
+<style>.menu-grid .menu-card::after{content:none!important;display:none!important}</style>
