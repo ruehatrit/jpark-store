@@ -33,33 +33,50 @@ func initWorklog() {
  if useMongo && mongoClient != nil { workCol=mongoClient.Database("jpark_store").Collection("it_worklog"); return }
  b,err:=os.ReadFile(workFile); if err==nil { workReady=json.Unmarshal(b,&workEntries)==nil } else if !os.IsNotExist(err) { workReady=false }
 }
+func validWork(x *WorkEntry) bool {
+ x.Title=strings.TrimSpace(x.Title)
+ people:=[]string{};seen:=map[string]bool{}
+ for _,v:=range x.People {v=strings.TrimSpace(v);if v!=""&&!seen[v]&&len(v)<=200 {people=append(people,v);seen[v]=true}}
+ x.People=people
+ _,err:=time.Parse("2006-01-02",x.Date)
+ return err==nil&&x.Title!=""&&len(x.Title)<=300&&len(x.Note)<=4000&&len(x.Location)<=300&&len(x.People)>0&&len(x.People)<=30&&len(x.Category)<=100&&(x.Shift=="กลางวัน"||x.Shift=="กลางคืน")&&(x.Status=="เสร็จแล้ว"||x.Status=="กำลังดำเนินการ"||x.Status=="รอดำเนินการ")
+}
 func worklogHandler(w http.ResponseWriter,r *http.Request) {
  w.Header().Set("Content-Type","application/json; charset=utf-8")
  w.Header().Set("Cache-Control","no-store")
- workMu.Lock(); defer workMu.Unlock()
+ workMu.Lock();defer workMu.Unlock()
  ctx,cancel:=context.WithTimeout(r.Context(),10*time.Second);defer cancel()
+ if !workReady {http.Error(w,"อ่านข้อมูลเดิมไม่สำเร็จ",503);return}
  if r.Method==http.MethodGet {
   list:=workEntries
-  if workCol!=nil { cur,err:=workCol.Find(ctx,bson.M{});if err!=nil {http.Error(w,"โหลดงานไม่สำเร็จ",503);return};defer cur.Close(ctx);list=[]WorkEntry{};if cur.All(ctx,&list)!=nil {http.Error(w,"โหลดงานไม่สำเร็จ",503);return} }
-  if !workReady {http.Error(w,"อ่านข้อมูลเดิมไม่สำเร็จ",503);return}
+  if workCol!=nil {cur,err:=workCol.Find(ctx,bson.M{});if err!=nil {http.Error(w,"โหลดงานไม่สำเร็จ",503);return};defer cur.Close(ctx);list=[]WorkEntry{};if cur.All(ctx,&list)!=nil {http.Error(w,"โหลดงานไม่สำเร็จ",503);return}}
   json.NewEncoder(w).Encode(map[string]interface{}{"entries":list,"durable":workCol!=nil});return
  }
- if r.Method!=http.MethodPost {w.WriteHeader(405);return}
- if !workReady {http.Error(w,"อ่านข้อมูลเดิมไม่สำเร็จ",503);return}
+ if r.Method!=http.MethodPost&&r.Method!=http.MethodPut&&r.Method!=http.MethodDelete {w.WriteHeader(405);return}
  r.Body=http.MaxBytesReader(w,r.Body,16384)
  var x WorkEntry
- if json.NewDecoder(r.Body).Decode(&x)!=nil {http.Error(w,"ข้อมูลไม่ถูกต้อง",400);return}
- x.Title=strings.TrimSpace(x.Title)
- people:=[]string{}; seen:=map[string]bool{}
- for _,v:=range x.People {v=strings.TrimSpace(v);if v!=""&&!seen[v]&&len(v)<=200 {people=append(people,v);seen[v]=true}}
- x.People=people
- if _,err:=time.Parse("2006-01-02",x.Date);err!=nil||x.Title==""||len(x.Title)>300||len(x.Note)>4000||len(x.Location)>300||len(x.People)==0||len(x.People)>30||len(x.Category)>100||(x.Shift!="กลางวัน"&&x.Shift!="กลางคืน")||(x.Status!="เสร็จแล้ว"&&x.Status!="กำลังดำเนินการ"&&x.Status!="รอดำเนินการ") {http.Error(w,"กรุณาตรวจวันที่ ชื่อผู้ทำงาน กะ และรายละเอียด",400);return}
- // Client-generated IDs make retries safe if the response is lost.
- if len(x.ID)<8||len(x.ID)>80 {http.Error(w,"รหัสงานไม่ถูกต้อง",400);return}
+ if json.NewDecoder(r.Body).Decode(&x)!=nil||len(x.ID)<8||len(x.ID)>80 {http.Error(w,"ข้อมูลหรือรหัสงานไม่ถูกต้อง",400);return}
+ if r.Method!=http.MethodDelete&&!validWork(&x) {http.Error(w,"กรุณาตรวจวันที่ ชื่อผู้ทำงาน กะ และรายละเอียด",400);return}
  var err error
- if workCol!=nil {_,err=workCol.UpdateOne(ctx,bson.M{"_id":x.ID},bson.M{"$setOnInsert":x},options.UpdateOne().SetUpsert(true))} else {
-  for _,e:=range workEntries {if e.ID==x.ID {json.NewEncoder(w).Encode(map[string]bool{"ok":true});return}}
-  next:=append(append([]WorkEntry{},workEntries...),x);var b []byte;b,err=json.Marshal(next);if err==nil {err=os.WriteFile(workFile+".new",b,0600)};if err==nil {err=os.Rename(workFile+".new",workFile)};if err==nil {workEntries=next}
+ if workCol!=nil {
+  switch r.Method {
+  case http.MethodPost:
+   // Retried creates never overwrite a record already stored under this ID.
+   _,err=workCol.UpdateOne(ctx,bson.M{"_id":x.ID},bson.M{"$setOnInsert":x},options.UpdateOne().SetUpsert(true))
+  case http.MethodPut:
+   var res *mongo.UpdateResult
+   res,err=workCol.UpdateOne(ctx,bson.M{"_id":x.ID},bson.M{"$set":x})
+   if err==nil&&res.MatchedCount==0 {http.Error(w,"ไม่พบงานที่ต้องการแก้ไข กรุณาโหลดล่าสุด",404);return}
+  case http.MethodDelete:
+   _,err=workCol.DeleteOne(ctx,bson.M{"_id":x.ID})
+  }
+ } else {
+  idx:=-1;for i,e:=range workEntries {if e.ID==x.ID {idx=i;break}}
+  if r.Method==http.MethodPost&&idx>=0 {json.NewEncoder(w).Encode(map[string]bool{"ok":true});return}
+  if r.Method==http.MethodPut&&idx<0 {http.Error(w,"ไม่พบงานที่ต้องการแก้ไข กรุณาโหลดล่าสุด",404);return}
+  next:=append([]WorkEntry{},workEntries...)
+  switch r.Method {case http.MethodPost:next=append(next,x);case http.MethodPut:next[idx]=x;case http.MethodDelete:if idx>=0 {next=append(next[:idx],next[idx+1:]...)}}
+  var b []byte;b,err=json.Marshal(next);if err==nil {err=os.WriteFile(workFile+".new",b,0600)};if err==nil {err=os.Rename(workFile+".new",workFile)};if err==nil {workEntries=next}
  }
  if err!=nil {http.Error(w,"บันทึกงานไม่สำเร็จ กรุณาลองอีกครั้ง",503);return}
  json.NewEncoder(w).Encode(map[string]bool{"ok":true})

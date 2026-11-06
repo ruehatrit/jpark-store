@@ -339,7 +339,14 @@ func main() {
 	_ = http.ListenAndServe(":"+p, nil)
 }
 
+func stockDelta(typ string, qty int) int {
+ if typ == "รับเข้า" || typ == "คืนเครื่องมือ" {return qty};return -qty
+}
+func validStockType(typ string) bool {
+ switch typ {case "รับเข้า", "เบิกใช้", "ยืมเครื่องมือ", "คืนเครื่องมือ", "ชำรุด", "สูญหาย":return true};return false
+}
 func action(w http.ResponseWriter, r *http.Request) {
+ if r.Method != http.MethodPost {w.WriteHeader(405);return}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	var a map[string]interface{}
 	if json.NewDecoder(r.Body).Decode(&a) != nil {
@@ -348,6 +355,7 @@ func action(w http.ResponseWriter, r *http.Request) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
+	before, _ := json.Marshal(st)
 	ok := true
 	errMsg := ""
 	act, _ := a["action"].(string)
@@ -401,8 +409,28 @@ func action(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		st.Users = z
+ case "updateTx":
+  oldIndex:=-1
+  for i,t:=range st.Txs {if t.ID==n("id") {oldIndex=i;break}}
+  if oldIndex<0 {ok=false;errMsg="ไม่พบรายการ";break}
+  q:=n("qty");typ:=s("type")
+  _,dateErr:=time.Parse("2006-01-02",s("date"))
+  if q<1||!validStockType(typ)||s("person")==""||dateErr!=nil {ok=false;errMsg="กรุณาตรวจจำนวน วันที่ ประเภท และผู้ทำงาน";break}
+  old:=st.Txs[oldIndex];oldItem,newItem:=-1,-1
+  for i,it:=range st.Items {if it.ID==old.ItemID {oldItem=i};if it.ID==n("itemId") {newItem=i}}
+  if oldItem<0||newItem<0 {ok=false;errMsg="ไม่พบอุปกรณ์ต้นทาง กรุณาตรวจทะเบียนคลัง";break}
+  next:=append([]Item{},st.Items...)
+  next[oldItem].Stock-=stockDelta(old.Type,old.Qty)
+  next[newItem].Stock+=stockDelta(typ,q)
+  for _,it:=range next {if it.Stock<0 {ok=false;errMsg="แก้ไขไม่ได้ เพราะทำให้สต็อกติดลบ";break}}
+  if !ok {break}
+  st.Items=next
+  it:=next[newItem]
+  st.Txs[oldIndex]=Tx{ID:old.ID,Date:s("date"),Type:typ,Name:it.Name,Cat:it.Cat,Unit:it.Unit,Person:s("person"),Loc:s("loc"),Note:s("note"),ItemID:it.ID,Qty:q}
 	case "transaction":
 		id, q := n("itemId"), n("qty")
+  _,dateErr:=time.Parse("2006-01-02",s("date"))
+  if q<1||!validStockType(s("type"))||s("person")==""||dateErr!=nil {ok=false;errMsg="กรุณาตรวจจำนวน วันที่ ประเภท และผู้ทำงาน";break}
 		idx := -1
 		for i := range st.Items {
 			if st.Items[i].ID == id {
@@ -450,6 +478,7 @@ func action(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		st.Txs = z
+  for _,it:=range st.Items {if it.Stock<0 {ok=false;errMsg="ลบไม่ได้ เพราะทำให้สต็อกติดลบ";break}}
 	default:
 		ok = false
 		errMsg = "unknown action"
@@ -460,6 +489,7 @@ func action(w http.ResponseWriter, r *http.Request) {
 			errMsg = "บันทึกฐานข้อมูลไม่สำเร็จ: " + err.Error()
 		}
 	}
+	if !ok {_ = json.Unmarshal(before,&st)}
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": ok, "error": errMsg, "time": time.Now()})
 }
 
