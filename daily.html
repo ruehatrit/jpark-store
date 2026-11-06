@@ -54,7 +54,7 @@ button,.primary,.login-btn{transition:transform .18s ease,filter .18s ease}butto
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 
 </style>
-</head>
+<style>.people-picker{display:flex;flex-wrap:wrap;gap:8px;padding:10px;border:1px solid #ccdaea;border-radius:12px;background:#fff}.people-picker label{display:flex;gap:7px;align-items:center;margin:0;padding:7px;background:#eef5ff;border-radius:8px}.people-picker input{width:17px;height:17px}</style></head>
 <body>
 <aside class="side">
   <div class="brand"><div class="mark">✓</div><div><b>JPARK</b><small>DAILY EQUIPMENT CHECK</small></div></div>
@@ -83,7 +83,7 @@ button,.primary,.login-btn{transition:transform .18s ease,filter .18s ease}butto
       <div class="grid">
         <div><label>วันที่</label><input type="date" id="checkDate"></div>
         <div><label>รอบตรวจ</label><select id="shift"><option>กลางวัน</option><option>กลางคืน</option></select></div>
-        <div><label>ผู้ตรวจ</label><select id="inspector"></select></div>
+        <div><label>ผู้ตรวจ</label><div id="inspector" class="people-picker"></div><small>เลือกผู้ร่วมทำงานได้มากกว่า 1 คน</small></div>
       </div>
     </div>
     <div class="panel">
@@ -186,7 +186,7 @@ async function api(action,data={}){let r=await fetch('/api/daily/action',{method
 function tbl(h,rows){return '<div class="wrap"><table><tr>'+h.map(x=>'<th>'+x+'</th>').join('')+'</tr>'+(rows.length?rows.join(''):`<tr><td colspan="${h.length}"><div class="empty">ยังไม่มีข้อมูล</div></td></tr>` )+'</table></div>'}
 function statusClass(s){return s==='ปกติ'?'ok':s==='ผิดปกติ'?'bad':'skip'}
 function renderAll(){
- $('inspector').innerHTML='<option value="">-- เลือกผู้ตรวจ --</option>'+users.map(u=>`<option>${esc(u.name)}</option>`).join('');
+ $('inspector').innerHTML=users.map(u=>`<label><input type="checkbox" value="${esc(u.name)}"> ${esc(u.name)}</label>`).join('');
  renderChecklist();renderZones();renderSetup();renderHistory();renderKPIs();renderIssues();renderReport();
 }
 function assetOptions(loc,selected=''){let aa=assets.filter(a=>a.location===loc);return '<option value="">-- เลือก Asset ที่ผิดปกติ --</option>'+aa.map(a=>`<option value="${esc(a.assetId)}"${a.assetId===selected?' selected':''}>${esc(a.assetId)} • ${esc(a.category)} • ${esc(a.name)}</option>`).join('')}
@@ -195,7 +195,7 @@ function renderChecklist(){let a=items.filter(x=>x.active!==false);$('checkCount
 function toggleAction(sel){let tr=sel.closest('.check-row'),box=tr.querySelector('.action-wrap'),assetBox=tr.querySelector('.asset-wrap'),act=tr.querySelector('.act');if(sel.value==='ผิดปกติ'){box.classList.remove('action-hide');assetBox.classList.remove('action-hide');if(!act.value)act.value='รอดำเนินการ'}else{box.classList.add('action-hide');assetBox.classList.add('action-hide');tr.querySelectorAll('.asset-cb').forEach(x=>x.checked=false)}}
 function getResults(){return [...document.querySelectorAll('.check-row')].flatMap(tr=>{let status=tr.querySelector('.st').value,base={itemId:+tr.dataset.id,group:tr.dataset.group,name:tr.dataset.name,location:tr.dataset.location,status,actionStatus:status==='ผิดปกติ'?tr.querySelector('.act').value:'',note:tr.querySelector('.nt').value.trim()};if(status!=='ผิดปกติ')return [{...base,assetId:''}];let ids=[...tr.querySelectorAll('.asset-cb:checked')].map(x=>x.value);if(!ids.length)return [{...base,assetId:''}];return ids.map(assetId=>({...base,assetId}))})}
 function setAllStatus(v){if(!v)return;document.querySelectorAll('.check-row .st').forEach(x=>{x.value=v;toggleAction(x)})}
-async function saveRecord(){let inspector=$('inspector').value;if(!inspector)return alert('กรุณาเลือกผู้ตรวจ');let results=getResults();let missing=results.filter(x=>x.status==='ผิดปกติ'&&assets.some(a=>a.location===x.location)&&!x.assetId);if(missing.length)return alert('มีรายการผิดปกติที่ยังไม่ได้เลือก Asset ที่เสีย กรุณาเลือกอุปกรณ์ก่อนบันทึก');let bad=results.filter(x=>x.status==='ผิดปกติ'&&!x.note).length;if(bad&&!confirm(`มี ${bad} รายการผิดปกติที่ยังไม่ได้ใส่หมายเหตุ ต้องการบันทึกต่อหรือไม่?`))return;try{await api('saveRecord',{date:$('checkDate').value,shift:$('shift').value,inspector,overallNote:$('overallNote').value.trim(),results});alert('บันทึกผลตรวจเรียบร้อย');resetForm()}catch(e){alert(e.message)}}
+async function saveRecord(){let inspector=Array.from($('inspector').querySelectorAll('input:checked'),x=>x.value).join(' / ');if(!inspector)return alert('กรุณาเลือกผู้ตรวจ');let results=getResults();let missing=results.filter(x=>x.status==='ผิดปกติ'&&assets.some(a=>a.location===x.location)&&!x.assetId);if(missing.length)return alert('มีรายการผิดปกติที่ยังไม่ได้เลือก Asset ที่เสีย กรุณาเลือกอุปกรณ์ก่อนบันทึก');let bad=results.filter(x=>x.status==='ผิดปกติ'&&!x.note).length;if(bad&&!confirm(`มี ${bad} รายการผิดปกติที่ยังไม่ได้ใส่หมายเหตุ ต้องการบันทึกต่อหรือไม่?`))return;try{await api('saveRecord',{date:$('checkDate').value,shift:$('shift').value,inspector,overallNote:$('overallNote').value.trim(),results});alert('บันทึกผลตรวจเรียบร้อย');resetForm()}catch(e){alert(e.message)}}
 function resetForm(){document.querySelectorAll('.check-row .st').forEach(x=>{x.value='ปกติ';toggleAction(x)});document.querySelectorAll('.check-row .nt').forEach(x=>x.value='');document.querySelectorAll('.check-row .act').forEach(x=>x.value='รอดำเนินการ');document.querySelectorAll('.check-row .asset-cb').forEach(x=>x.checked=false);$('overallNote').value='';if($('setAll'))$('setAll').value=''}
 function renderKPIs(){let t=today(),rs=records.filter(r=>r.date===t),all=rs.flatMap(r=>r.results||[]);$('kOk').textContent=all.filter(x=>x.status==='ปกติ').length;$('kBad').textContent=all.filter(x=>x.status==='ผิดปกติ').length;$('kRuns').textContent=rs.length}
 async function addZone(){let zone=$('newZone').value.trim();if(!zone)return alert('กรุณาระบุชื่อโซน');try{await api('addZone',{zone});$('newZone').value=''}catch(e){alert(e.message)}}
