@@ -308,6 +308,7 @@ func main() {
 	extraInit()
 	initWorklog()
 	initOctoberBackfill()
+	initSharedShiftBackfill()
 	http.HandleFunc("/api/issues-extra/state", requireAuth(extraState))
 	http.HandleFunc("/api/issues-extra/action", requireAuth(extraAction))
 	http.HandleFunc("/api/cctv/ingest", cctvIngest)
@@ -331,7 +332,10 @@ func main() {
 	http.HandleFunc("/api/pm", requireAuth(pmHandler))
 	http.HandleFunc("/api/asset/state", requireAuth(assetStateHandler))
 	http.HandleFunc("/api/asset/action", requireAuth(assetActionHandler))
-	http.Handle("/", http.FileServer(http.Dir(".")))
+	http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+  w.Header().Set("Cache-Control","no-store")
+  http.FileServer(http.Dir(".")).ServeHTTP(w,r)
+ }))
 	p := os.Getenv("PORT")
 	if p == "" {
 		p = "10000"
