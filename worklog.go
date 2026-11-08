@@ -39,7 +39,7 @@ func validWork(x *WorkEntry) bool {
  for _,v:=range x.People {v=strings.TrimSpace(v);if v!=""&&!seen[v]&&len(v)<=200 {people=append(people,v);seen[v]=true}}
  x.People=people
  _,err:=time.Parse("2006-01-02",x.Date)
- return err==nil&&x.Title!=""&&len(x.Title)<=300&&len(x.Note)<=4000&&len(x.Location)<=300&&len(x.People)>0&&len(x.People)<=30&&len(x.Category)<=100&&(x.Shift=="กลางวัน"||x.Shift=="กลางคืน")&&(x.Status=="เสร็จแล้ว"||x.Status=="กำลังดำเนินการ"||x.Status=="รอดำเนินการ")
+ return err==nil&&x.Title!=""&&len(x.Title)<=300&&len(x.Note)<=4000&&len(x.Location)<=300&&len(x.People)>0&&len(x.People)<=30&&len(x.Category)<=100&&(x.Shift=="กลางวัน"||x.Shift=="กลางคืน")&&(x.Status=="เสร็จแล้ว"||x.Status=="กำลังดำเนินการ"||x.Status=="รอดำเนินการ"||x.Status=="รอยืนยันย้อนหลัง")
 }
 func worklogHandler(w http.ResponseWriter,r *http.Request) {
  w.Header().Set("Content-Type","application/json; charset=utf-8")
