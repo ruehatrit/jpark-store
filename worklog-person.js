@@ -4,7 +4,7 @@ const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const person=new URLSearchParams(location.search).get('person')||'';
 let entries=[],visible=[],loaded=false;
 $('personName').textContent=person||'กรุณาเลือกพนักงาน';document.title=(person||'พนักงาน')+' • ประวัติการทำงาน';
-$('addWork').href='/worklog.html?person='+encodeURIComponent(person)+'#form';
+$('addWork').href='/worklog-v2.html?person='+encodeURIComponent(person)+'#form';
 function selectEntries(list,who,from,to,status,query){const q=query.toLowerCase();return list.filter(x=>(x.people||[]).includes(who)&&(!from||x.date>=from)&&(!to||x.date<=to)&&(!status||x.status===status)&&(!q||[x.title,x.note,x.category,x.location,x.shift].join(' ').toLowerCase().includes(q))).sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id))}
 function summarize(list){const dates=new Set(list.map(x=>x.date));const done=list.filter(x=>x.status==='เสร็จแล้ว').length;return {total:list.length,days:dates.size,done,rate:list.length?Math.round(done/list.length*100):0}}
 function render(){if(!loaded)return;const from=$('from').value,to=$('to').value;if(from&&to&&from>to){$('message').textContent='วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด';$('csv').disabled=$('print').disabled=$('getReport').disabled=$('confirmBackfill').disabled=true;return}

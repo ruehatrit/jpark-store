@@ -332,6 +332,15 @@ func main() {
 	http.HandleFunc("/api/pm", requireAuth(pmHandler))
 	http.HandleFunc("/api/asset/state", requireAuth(assetStateHandler))
 	http.HandleFunc("/api/asset/action", requireAuth(assetActionHandler))
+ // Canonical routes prevent old employee/menu URLs from serving stale HTML.
+ http.HandleFunc("/worklog.html",func(w http.ResponseWriter,r *http.Request){
+  w.Header().Set("Cache-Control","no-store, max-age=0")
+  target:="/worklog-v2.html";if r.URL.RawQuery!="" {target+="?"+r.URL.RawQuery};http.Redirect(w,r,target,http.StatusFound)
+ })
+ http.HandleFunc("/worklog-person.html",func(w http.ResponseWriter,r *http.Request){
+  w.Header().Set("Cache-Control","no-store, max-age=0")
+  target:="/worklog-person-v2.html";if r.URL.RawQuery!="" {target+="?"+r.URL.RawQuery};http.Redirect(w,r,target,http.StatusFound)
+ })
 	http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
   w.Header().Set("Cache-Control","no-store")
   http.FileServer(http.Dir(".")).ServeHTTP(w,r)
