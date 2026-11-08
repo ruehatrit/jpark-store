@@ -57,6 +57,7 @@ func worklogHandler(w http.ResponseWriter,r *http.Request) {
  var x WorkEntry
  if json.NewDecoder(r.Body).Decode(&x)!=nil||len(x.ID)<8||len(x.ID)>80 {http.Error(w,"ข้อมูลหรือรหัสงานไม่ถูกต้อง",400);return}
  if r.Method!=http.MethodDelete&&!validWork(&x) {http.Error(w,"กรุณาตรวจวันที่ ชื่อผู้ทำงาน กะ และรายละเอียด",400);return}
+ if err:=checkWorkDay(ctx,r.Method,x);err!=nil {http.Error(w,err.Error(),409);return}
  var err error
  if workCol!=nil {
   switch r.Method {
