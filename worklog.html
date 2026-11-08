@@ -19,7 +19,7 @@ entries=[...dailyRoutineEntries((manual.entries||[]).map(x=>({...plainRoutineWor
 let selected=$('who').value,all=[...new Set([...users.map(x=>x.name),...entries.flatMap(x=>x.people||[])])].sort();$('who').innerHTML='<option value="">ทุกคน</option>'+all.map(n=>`<option>${esc(n)}</option>`).join('');$('who').value=all.includes(selected)?selected:'';
 const chosen=$('people').querySelector('input:checked')?.value;
 $('people').innerHTML=users.map(u=>`<label><input type="radio" name="worker" value="${esc(u.name)}" ${u.name===chosen?'checked':''}>${esc(u.name)}</label>`).join('');
-$('staffMenus').innerHTML='<button type="button" id="showAll">ดูทุกคน</button>'+all.map(n=>`<a class="button" href="/worklog-person.html?ui=all-staff-shared-1&person=${encodeURIComponent(n)}">♙ ${esc(n)}<br><small>ดูประวัติ • กราฟ • รายงาน →</small></a>`).join('');
+$('staffMenus').innerHTML='<button type="button" id="showAll">ดูทุกคน</button>'+all.map(n=>`<a class="button" href="/worklog-person-v2.html?ui=all-staff-shared-1&person=${encodeURIComponent(n)}">♙ ${esc(n)}<br><small>ดูประวัติ • กราฟ • รายงาน →</small></a>`).join('');
 $('showAll').onclick=()=>{$('who').value='';render()};
 const requested=new URLSearchParams(location.search).get('person');if(requested&&all.includes(requested)){$('who').value=requested;$('people').querySelectorAll('input').forEach(x=>x.checked=x.value===requested)}
 if(!manual.durable)$('message').textContent+='ขณะนี้บันทึกงานใหม่เป็นข้อมูลชั่วคราว กรุณาตั้งค่า MONGODB_URI เพื่อเก็บงานถาวร\n';render();
