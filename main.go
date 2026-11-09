@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -239,6 +241,7 @@ func nextUser() int {
 func main() {
 	load()
 	initMembers()
+	initAttendance()
 	initDailyCheck()
 	initAssetRegister()
 	initPM()
@@ -253,6 +256,11 @@ func main() {
 	http.HandleFunc("/api/cctv/status", requireAuth(cctvStatus))
 	http.HandleFunc("/api/cctv/names", requireAuth(cctvNamesHandler))
 	http.HandleFunc("/api/worklog", requireAuth(worklogHandler))
+	http.HandleFunc("/api/attendance", requireAuth(attendanceViewHandler))
+	http.HandleFunc("/api/attendance/employees", requireAuth(employeeRegisterHandler))
+	http.HandleFunc("/api/attendance/device", requireMemberAdmin(attendanceDeviceHandler))
+	http.HandleFunc("/api/attendance/shifts", requireMemberAdmin(attendanceShiftHandler))
+	http.HandleFunc("/api/attendance/ingest", fingerIngest)
 	http.HandleFunc("/api/members", requireMemberAdmin(membersHandler))
 	http.HandleFunc("/api/audit", requireMemberAdmin(auditHandler))
 	http.HandleFunc("/api/login", login)
@@ -292,6 +300,11 @@ func main() {
 	})
 	http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
+		cleanPath := path.Clean("/" + r.URL.Path)
+		if cleanPath == "/fingerprint-agent" || strings.HasPrefix(cleanPath, "/fingerprint-agent/") || strings.HasSuffix(cleanPath, ".go") || strings.HasSuffix(cleanPath, "/Employee_Register_16_Import.csv") {
+			http.NotFound(w, r)
+			return
+		}
 		http.FileServer(http.Dir(".")).ServeHTTP(w, r)
 	}))
 	p := os.Getenv("PORT")

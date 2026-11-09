@@ -1,0 +1,7 @@
+
+fingerprint-agent/config.json
+fingerprint-agent/.venv/
+fingerprint-agent/.agent/
+__pycache__/
+
+Employee_Register_16_Import.csv

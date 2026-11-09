@@ -1,7 +1,7 @@
 'use strict';
 const $=id=>document.getElementById(id),esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let accounts=[],events=[],editing='',offset=0,me=null,logLoaded=false;
-const actionNames={POST:'เพิ่ม',PUT:'แก้ไข',DELETE:'ลบ',login:'เข้าสู่ระบบ',logout:'ออกจากระบบ',uploadAttachment:'แนบผลทดสอบ NVR',deleteAttachment:'ลบไฟล์ผลทดสอบ NVR',addItem:'เพิ่มอุปกรณ์',delItem:'ลบอุปกรณ์',updateMin:'แก้จำนวนขั้นต่ำ',transaction:'รับเข้า / เบิกจ่าย / ยืมคืน',editTx:'แก้รายการคลัง',delTx:'ลบรายการคลัง',addUser:'เพิ่มรายชื่อผู้ปฏิบัติงาน',delUser:'ลบรายชื่อผู้ปฏิบัติงาน',create:'เพิ่ม',update:'แก้ไข',delete:'ลบ'};
+const actionNames={POST:'เพิ่ม',PUT:'แก้ไข',DELETE:'ลบ',saveEmployees:'บันทึกทะเบียนพนักงาน',saveShifts:'กำหนดกะ',issue_key:'เปลี่ยนคีย์ตัวกลาง',disable:'หยุดรับข้อมูล',login:'เข้าสู่ระบบ',logout:'ออกจากระบบ',uploadAttachment:'แนบผลทดสอบ NVR',deleteAttachment:'ลบไฟล์ผลทดสอบ NVR',addItem:'เพิ่มอุปกรณ์',delItem:'ลบอุปกรณ์',updateMin:'แก้จำนวนขั้นต่ำ',transaction:'รับเข้า / เบิกจ่าย / ยืมคืน',editTx:'แก้รายการคลัง',delTx:'ลบรายการคลัง',addUser:'เพิ่มรายชื่อผู้ปฏิบัติงาน',delUser:'ลบรายชื่อผู้ปฏิบัติงาน',create:'เพิ่ม',update:'แก้ไข',delete:'ลบ'};
 const results={success:'สำเร็จ',failed:'ไม่สำเร็จ',pending:'ต้องตรวจผลรายการ'};
 function message(text){$('message').textContent=text||''}
 function stamp(value){if(!value||String(value).startsWith('0001'))return '-';return new Date(value).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'medium',timeStyle:'short'})}
