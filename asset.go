@@ -116,6 +116,10 @@ func assetStateHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(assetSt)
 }
 func assetActionHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(405)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	var a map[string]interface{}
 	if json.NewDecoder(r.Body).Decode(&a) != nil {
@@ -174,7 +178,10 @@ func assetActionHandler(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 		}
-		if !found { ok = false; errMsg = "ไม่พบ Asset" }
+		if !found {
+			ok = false
+			errMsg = "ไม่พบ Asset"
+		}
 	case "delete":
 		id := n("id")
 		z := assetSt.Assets[:0]

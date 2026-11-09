@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -54,19 +52,9 @@ type State struct {
 }
 
 var mu sync.Mutex
-var sessionToken string
 var mongoClient *mongo.Client
 var stateCol *mongo.Collection
 var useMongo bool
-
-func initSessionToken() {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		sessionToken = fmt.Sprintf("%d", time.Now().UnixNano())
-		return
-	}
-	sessionToken = base64.RawURLEncoding.EncodeToString(b)
-}
 
 func adminID() string {
 	if v := os.Getenv("JPARK_ADMIN_ID"); v != "" {
@@ -80,57 +68,6 @@ func adminPassword() string {
 		return v
 	}
 	return "Jpark@12345"
-}
-
-func isAuthed(r *http.Request) bool {
-	c, err := r.Cookie("jpark_session")
-	return err == nil && c.Value == sessionToken && sessionToken != ""
-}
-
-func requireAuth(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if !isAuthed(r) {
-			w.Header().Set("Content-Type", "application/json; charset=utf-8")
-			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "unauthorized"})
-			return
-		}
-		next(w, r)
-	}
-}
-
-func login(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-	var a struct {
-		ID       string `json:"id" bson:"id"`
-		Password string `json:"password"`
-	}
-	if json.NewDecoder(r.Body).Decode(&a) != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	if a.ID != adminID() || a.Password != adminPassword() {
-		w.WriteHeader(http.StatusUnauthorized)
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"})
-		return
-	}
-	http.SetCookie(w, &http.Cookie{Name: "jpark_session", Value: sessionToken, Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 86400})
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
-}
-
-func logout(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{Name: "jpark_session", Value: "", Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
-}
-
-func sessionStatus(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "authenticated": isAuthed(r)})
 }
 
 var st = State{
@@ -300,8 +237,8 @@ func nextUser() int {
 }
 
 func main() {
-	initSessionToken()
 	load()
+	initMembers()
 	initDailyCheck()
 	initAssetRegister()
 	initPM()
@@ -316,6 +253,8 @@ func main() {
 	http.HandleFunc("/api/cctv/status", requireAuth(cctvStatus))
 	http.HandleFunc("/api/cctv/names", requireAuth(cctvNamesHandler))
 	http.HandleFunc("/api/worklog", requireAuth(worklogHandler))
+	http.HandleFunc("/api/members", requireMemberAdmin(membersHandler))
+	http.HandleFunc("/api/audit", requireMemberAdmin(auditHandler))
 	http.HandleFunc("/api/login", login)
 	http.HandleFunc("/api/logout", logout)
 	http.HandleFunc("/api/session", sessionStatus)
@@ -331,21 +270,30 @@ func main() {
 	http.HandleFunc("/api/daily/action", requireAuth(dailyActionHandler))
 	http.HandleFunc("/api/daily/export", requireAuth(dailyExportCSV))
 	http.HandleFunc("/api/pm", requireAuth(pmHandler))
+	http.HandleFunc("/api/pm/files", requireAuth(pmFilesHandler))
 	http.HandleFunc("/api/asset/state", requireAuth(assetStateHandler))
 	http.HandleFunc("/api/asset/action", requireAuth(assetActionHandler))
- // Canonical routes prevent old employee/menu URLs from serving stale HTML.
- http.HandleFunc("/worklog.html",func(w http.ResponseWriter,r *http.Request){
-  w.Header().Set("Cache-Control","no-store, max-age=0")
-  target:="/worklog-v2.html";if r.URL.RawQuery!="" {target+="?"+r.URL.RawQuery};http.Redirect(w,r,target,http.StatusFound)
- })
- http.HandleFunc("/worklog-person.html",func(w http.ResponseWriter,r *http.Request){
-  w.Header().Set("Cache-Control","no-store, max-age=0")
-  target:="/worklog-person-v2.html";if r.URL.RawQuery!="" {target+="?"+r.URL.RawQuery};http.Redirect(w,r,target,http.StatusFound)
- })
-	http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
-  w.Header().Set("Cache-Control","no-store")
-  http.FileServer(http.Dir(".")).ServeHTTP(w,r)
- }))
+	// Canonical routes prevent old employee/menu URLs from serving stale HTML.
+	http.HandleFunc("/worklog.html", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store, max-age=0")
+		target := "/worklog-v2.html"
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusFound)
+	})
+	http.HandleFunc("/worklog-person.html", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store, max-age=0")
+		target := "/worklog-person-v2.html"
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusFound)
+	})
+	http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		http.FileServer(http.Dir(".")).ServeHTTP(w, r)
+	}))
 	p := os.Getenv("PORT")
 	if p == "" {
 		p = "10000"
@@ -355,13 +303,23 @@ func main() {
 }
 
 func stockDelta(typ string, qty int) int {
- if typ == "รับเข้า" || typ == "คืนเครื่องมือ" {return qty};return -qty
+	if typ == "รับเข้า" || typ == "คืนเครื่องมือ" {
+		return qty
+	}
+	return -qty
 }
 func validStockType(typ string) bool {
- switch typ {case "รับเข้า", "เบิกใช้", "ยืมเครื่องมือ", "คืนเครื่องมือ", "ชำรุด", "สูญหาย":return true};return false
+	switch typ {
+	case "รับเข้า", "เบิกใช้", "ยืมเครื่องมือ", "คืนเครื่องมือ", "ชำรุด", "สูญหาย":
+		return true
+	}
+	return false
 }
 func action(w http.ResponseWriter, r *http.Request) {
- if r.Method != http.MethodPost {w.WriteHeader(405);return}
+	if r.Method != http.MethodPost {
+		w.WriteHeader(405)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	var a map[string]interface{}
 	if json.NewDecoder(r.Body).Decode(&a) != nil {
@@ -424,28 +382,66 @@ func action(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		st.Users = z
- case "updateTx":
-  oldIndex:=-1
-  for i,t:=range st.Txs {if t.ID==n("id") {oldIndex=i;break}}
-  if oldIndex<0 {ok=false;errMsg="ไม่พบรายการ";break}
-  q:=n("qty");typ:=s("type")
-  _,dateErr:=time.Parse("2006-01-02",s("date"))
-  if q<1||!validStockType(typ)||s("person")==""||dateErr!=nil {ok=false;errMsg="กรุณาตรวจจำนวน วันที่ ประเภท และผู้ทำงาน";break}
-  old:=st.Txs[oldIndex];oldItem,newItem:=-1,-1
-  for i,it:=range st.Items {if it.ID==old.ItemID {oldItem=i};if it.ID==n("itemId") {newItem=i}}
-  if oldItem<0||newItem<0 {ok=false;errMsg="ไม่พบอุปกรณ์ต้นทาง กรุณาตรวจทะเบียนคลัง";break}
-  next:=append([]Item{},st.Items...)
-  next[oldItem].Stock-=stockDelta(old.Type,old.Qty)
-  next[newItem].Stock+=stockDelta(typ,q)
-  for _,it:=range next {if it.Stock<0 {ok=false;errMsg="แก้ไขไม่ได้ เพราะทำให้สต็อกติดลบ";break}}
-  if !ok {break}
-  st.Items=next
-  it:=next[newItem]
-  st.Txs[oldIndex]=Tx{ID:old.ID,Date:s("date"),Type:typ,Name:it.Name,Cat:it.Cat,Unit:it.Unit,Person:s("person"),Loc:s("loc"),Note:s("note"),ItemID:it.ID,Qty:q}
+	case "updateTx":
+		oldIndex := -1
+		for i, t := range st.Txs {
+			if t.ID == n("id") {
+				oldIndex = i
+				break
+			}
+		}
+		if oldIndex < 0 {
+			ok = false
+			errMsg = "ไม่พบรายการ"
+			break
+		}
+		q := n("qty")
+		typ := s("type")
+		_, dateErr := time.Parse("2006-01-02", s("date"))
+		if q < 1 || !validStockType(typ) || s("person") == "" || dateErr != nil {
+			ok = false
+			errMsg = "กรุณาตรวจจำนวน วันที่ ประเภท และผู้ทำงาน"
+			break
+		}
+		old := st.Txs[oldIndex]
+		oldItem, newItem := -1, -1
+		for i, it := range st.Items {
+			if it.ID == old.ItemID {
+				oldItem = i
+			}
+			if it.ID == n("itemId") {
+				newItem = i
+			}
+		}
+		if oldItem < 0 || newItem < 0 {
+			ok = false
+			errMsg = "ไม่พบอุปกรณ์ต้นทาง กรุณาตรวจทะเบียนคลัง"
+			break
+		}
+		next := append([]Item{}, st.Items...)
+		next[oldItem].Stock -= stockDelta(old.Type, old.Qty)
+		next[newItem].Stock += stockDelta(typ, q)
+		for _, it := range next {
+			if it.Stock < 0 {
+				ok = false
+				errMsg = "แก้ไขไม่ได้ เพราะทำให้สต็อกติดลบ"
+				break
+			}
+		}
+		if !ok {
+			break
+		}
+		st.Items = next
+		it := next[newItem]
+		st.Txs[oldIndex] = Tx{ID: old.ID, Date: s("date"), Type: typ, Name: it.Name, Cat: it.Cat, Unit: it.Unit, Person: s("person"), Loc: s("loc"), Note: s("note"), ItemID: it.ID, Qty: q}
 	case "transaction":
 		id, q := n("itemId"), n("qty")
-  _,dateErr:=time.Parse("2006-01-02",s("date"))
-  if q<1||!validStockType(s("type"))||s("person")==""||dateErr!=nil {ok=false;errMsg="กรุณาตรวจจำนวน วันที่ ประเภท และผู้ทำงาน";break}
+		_, dateErr := time.Parse("2006-01-02", s("date"))
+		if q < 1 || !validStockType(s("type")) || s("person") == "" || dateErr != nil {
+			ok = false
+			errMsg = "กรุณาตรวจจำนวน วันที่ ประเภท และผู้ทำงาน"
+			break
+		}
 		idx := -1
 		for i := range st.Items {
 			if st.Items[i].ID == id {
@@ -493,7 +489,13 @@ func action(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		st.Txs = z
-  for _,it:=range st.Items {if it.Stock<0 {ok=false;errMsg="ลบไม่ได้ เพราะทำให้สต็อกติดลบ";break}}
+		for _, it := range st.Items {
+			if it.Stock < 0 {
+				ok = false
+				errMsg = "ลบไม่ได้ เพราะทำให้สต็อกติดลบ"
+				break
+			}
+		}
 	default:
 		ok = false
 		errMsg = "unknown action"
@@ -504,7 +506,9 @@ func action(w http.ResponseWriter, r *http.Request) {
 			errMsg = "บันทึกฐานข้อมูลไม่สำเร็จ: " + err.Error()
 		}
 	}
-	if !ok {_ = json.Unmarshal(before,&st)}
+	if !ok {
+		_ = json.Unmarshal(before, &st)
+	}
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": ok, "error": errMsg, "time": time.Now()})
 }
 
