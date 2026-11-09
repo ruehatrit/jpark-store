@@ -309,6 +309,7 @@ func main() {
 	initWorklog()
 	initOctoberBackfill()
 	initSharedShiftBackfill()
+	initSeptemberBackfill()
 	http.HandleFunc("/api/issues-extra/state", requireAuth(extraState))
 	http.HandleFunc("/api/issues-extra/action", requireAuth(extraAction))
 	http.HandleFunc("/api/cctv/ingest", cctvIngest)
