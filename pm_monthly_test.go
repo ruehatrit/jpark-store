@@ -171,3 +171,26 @@ func TestPMFileQuotaTypeAndDeviceGuards(t *testing.T) {
 		}
 	}
 }
+
+func TestPMImagePreviewIsAuthenticatedAndImagesOnly(t *testing.T) {
+	mock, _ := mockAccounts(t)
+	old := pmFileCol
+	defer func() { pmFileCol = old }()
+	pmFileCol = memberCol.Database().Collection("pm_attachments")
+	for _, kind := range []string{"image/png", "image/jpeg", "application/pdf"} {
+		f := PMFile{ID: "11111111-2222-4333-8444-555555555555", Name: "result", MIME: kind, Data: []byte("example")}
+		mock.AddResponses(accountCursor(f))
+		rec := httptest.NewRecorder()
+		requireAuth(pmFilesHandler)(rec, rootRequest("GET", "/api/pm/files?id="+f.ID+"&preview=1", ""))
+		if rec.Code != 200 {
+			t.Fatal("preview failed", rec.Code)
+		}
+		mode := "inline"
+		if kind == "application/pdf" {
+			mode = "attachment"
+		}
+		if !strings.HasPrefix(rec.Header().Get("Content-Disposition"), mode) {
+			t.Fatal("unsafe preview mode", kind, rec.Header())
+		}
+	}
+}

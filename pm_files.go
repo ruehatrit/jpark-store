@@ -100,7 +100,11 @@ func pmFilesHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", f.MIME)
-		w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": f.Name}))
+		disposition := "attachment"
+		if r.URL.Query().Get("preview") == "1" && (f.MIME == "image/png" || f.MIME == "image/jpeg") {
+			disposition = "inline"
+		}
+		w.Header().Set("Content-Disposition", mime.FormatMediaType(disposition, map[string]string{"filename": f.Name}))
 		_, _ = w.Write(f.Data)
 		return
 	}
