@@ -20,12 +20,18 @@ async function load(){if(!person){$('reportRows').innerHTML='<tr><td colspan=9>�
 // Build an independent print document: dashboard layout cannot affect page width.
 function buildWorkPrintDocument(list,info){
  const safe=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const rows=list.map((x,i)=>`<tr><td>${i+1}</td><td>${safe(x.date)}<br>${safe(x.shift||'ไม่ระบุ')}</td><td><strong>${safe(x.title||'-')}</strong><div>${safe(x.source||'กรอกเอง')}${x.category?' • '+safe(x.category):''}</div><div>สถานที่: ${safe(x.location||'-')}</div><div>สถานะ: ${safe(x.status==='รอยืนยันย้อนหลัง'?'รอยืนยัน':x.status||'-')}</div></td><td class="details">${safe(x.note||'-')}</td></tr>`).join('');
+ // Bound each physical row so it can stay together on one printed page.
+ const chunks=(value,limit)=>{const out=[];let part='',cost=0;for(const c of String(value??'')){const n=c==='\n'?45:1;if(cost+n>limit&&part){out.push(part);part='';cost=0}part+=c;cost+=n}if(part||!out.length)out.push(part);return out};
+ const rows=list.flatMap((x,i)=>{
+  const work=[x.title||'-',(x.source||'กรอกเอง')+(x.category?' • '+x.category:''),'สถานที่: '+(x.location||'-'),'สถานะ: '+(x.status==='รอยืนยันย้อนหลัง'?'รอยืนยัน':x.status||'-')].join('\n');
+  const titles=chunks(work,280),notes=chunks(x.note||'-',600),count=Math.max(titles.length,notes.length);
+  return Array.from({length:count},(_,part)=>`<tr><td>${i+1}${part?'<br><small>ต่อ</small>':''}</td><td>${safe(x.date)}<br>${safe(x.shift||'ไม่ระบุ')}</td><td class="details">${safe(titles[part]||'รายการเดิม (ต่อ)')}</td><td class="details">${safe(notes[part]||'')}${part<count-1?'<div class="continuation">รายละเอียดต่อในแถวถัดไป</div>':''}</td></tr>`);
+ }).join('');
  return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>บันทึกการทำงาน • ${safe(info.person)}</title><style>
- @page{size:A4 portrait;margin:12mm}
+ @page{size:A4 landscape;margin:12mm}
  *{box-sizing:border-box}html,body{margin:0;padding:0;width:100%;font:11px/1.6 Tahoma,Arial,sans-serif;color:#193552;background:#fff}
- .sheet{width:100%;max-width:186mm;margin:0 auto}header{text-align:center;border-bottom:2px solid #235787;padding-bottom:10px}header img{width:95px;height:40px;object-fit:contain}h1{font-size:17px;margin:4px 0}header p{margin:3px 0}.meta{margin:12px 0;overflow-wrap:anywhere}
- table{border-collapse:collapse;table-layout:fixed;width:100%;max-width:100%}thead{display:table-header-group}tbody{display:table-row-group}th,td{border:1px solid #bdcddd;padding:6px;vertical-align:top;white-space:normal;word-break:normal;overflow-wrap:anywhere}th{background:#edf4fb}td div{margin-top:3px}td.details{white-space:pre-wrap}tr{break-inside:auto;page-break-inside:auto}
+ .sheet{width:100%;max-width:273mm;margin:0 auto}header{text-align:center;border-bottom:2px solid #235787;padding-bottom:10px}header img{width:95px;height:40px;object-fit:contain}h1{font-size:17px;margin:4px 0}header p{margin:3px 0}.meta{margin:12px 0;overflow-wrap:anywhere}
+ table{border-collapse:collapse;table-layout:fixed;width:100%;max-width:100%}thead{display:table-header-group}tbody{display:table-row-group}th,td{border:1px solid #bdcddd;padding:6px;vertical-align:top;white-space:normal;word-break:normal;overflow-wrap:anywhere}th{background:#edf4fb}td div{margin-top:3px}td.details{white-space:pre-wrap}tr{break-inside:avoid;page-break-inside:avoid}.continuation{color:#637589;font-size:9px;margin-top:6px}
  .signatures{margin-top:22px;break-inside:avoid;page-break-inside:avoid;display:table;width:100%;table-layout:fixed}.signatures>div{display:table-cell;width:50%;text-align:center;padding:16px 5px}.footer{margin-top:12px;border-top:1px solid #bdcddd;padding-top:6px;font-size:10px;overflow-wrap:anywhere}.tools{margin:12px;text-align:center}.tools button{padding:10px 18px;cursor:pointer}@media print{.tools{display:none}.sheet{max-width:100%;margin:0}th{print-color-adjust:exact}}
  </style></head><body><div class="tools"><button id="printAgain">พิมพ์ / บันทึก PDF</button></div><div class="sheet"><header><img src="${safe(info.logo)}" alt="SiPH"><h1>รายงานบันทึกการทำงานพนักงานไอที</h1><p>โรงพยาบาลศิริราช ปิยมหาราชการุณย์</p><p>JPARK • ฝ่ายเทคโนโลยีสารสนเทศ</p></header><div class="meta"><strong>พนักงาน: ${safe(info.person)}</strong><br>ช่วงวันที่: ${safe(info.dates)}<br>${safe(info.filters)}<br>จำนวนทั้งหมด ${list.length} รายการ</div><table><colgroup><col style="width:5%"><col style="width:16%"><col style="width:29%"><col style="width:50%"></colgroup><thead><tr><th>ลำดับ</th><th>วันที่ / กะ</th><th>รายการงาน</th><th>รายละเอียด</th></tr></thead><tbody>${rows||'<tr><td colspan="4">ไม่มีข้อมูลตามตัวกรอง</td></tr>'}</tbody></table><div class="signatures"><div>ลงชื่อ _____________________<br>( ${safe(info.person)} )<br>ผู้ปฏิบัติงาน</div><div>ลงชื่อ _____________________<br>( _____________________ )<br>ผู้ตรวจสอบ</div></div><div class="footer">${safe(info.printed)} • รวม ${list.length} รายการ</div></div></body></html>`;
 }
@@ -36,7 +42,7 @@ async function printWorkReport(){
  report.document.getElementById('printAgain').onclick=()=>report.print();
  await report.document.fonts.ready;
  await Promise.all(Array.from(report.document.images,img=>img.decode().catch(()=>{})));
- if(report.closed)return;report.focus();report.print();
+ if(report.closed)return;await new Promise(resolve=>report.requestAnimationFrame(()=>report.requestAnimationFrame(resolve)));report.focus();report.print();
 }
 
 function csvCell(v){return '"'+String(v??'').replace(/^[=+@\-\t\r]/,"'$&").replace(/"/g,'""')+'"'}
