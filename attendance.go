@@ -25,13 +25,14 @@ var employeeCodePattern = regexp.MustCompile(`^[0-9]{1,9}$`)
 var attendanceZone = time.FixedZone("ICT", 7*3600)
 
 type EmployeeProfile struct {
-	Code         string `json:"code" bson:"_id"`
-	Name         string `json:"name" bson:"name"`
-	Position     string `json:"position" bson:"position"`
-	Nickname     string `json:"nickname" bson:"nickname"`
-	Phone        string `json:"phone" bson:"phone"`
-	DefaultShift string `json:"defaultShift" bson:"defaultShift"`
-	Active       bool   `json:"active" bson:"active"`
+	Code          string `json:"code" bson:"_id"`
+	Name          string `json:"name" bson:"name"`
+	Position      string `json:"position" bson:"position"`
+	Nickname      string `json:"nickname" bson:"nickname"`
+	Phone         string `json:"phone" bson:"phone"`
+	DefaultShift  string `json:"defaultShift" bson:"defaultShift"`
+	Active        bool   `json:"active" bson:"active"`
+	AvatarVersion string `json:"avatarVersion,omitempty" bson:"avatarVersion,omitempty"`
 }
 type FingerEvent struct {
 	ID         string    `json:"id" bson:"_id"`
@@ -43,19 +44,21 @@ type FingerEvent struct {
 	ReceivedAt time.Time `json:"receivedAt" bson:"receivedAt"`
 }
 type FingerDevice struct {
-	ID           string    `bson:"_id"`
-	KeyHash      string    `json:"-" bson:"keyHash"`
-	Enabled      bool      `bson:"enabled"`
-	LastSeen     time.Time `bson:"lastSeen"`
-	LastRead     time.Time `bson:"lastRead"`
-	LastError    string    `bson:"lastError"`
-	MachineCount int       `bson:"machineCount"`
+	ID               string    `bson:"_id"`
+	KeyHash          string    `json:"-" bson:"keyHash"`
+	Enabled          bool      `bson:"enabled"`
+	LastSeen         time.Time `bson:"lastSeen"`
+	LastRead         time.Time `bson:"lastRead"`
+	LastCompleteRead time.Time `bson:"lastCompleteRead"`
+	LastError        string    `bson:"lastError"`
+	MachineCount     int       `bson:"machineCount"`
 }
 type EmployeeShift struct {
-	ID    string `bson:"_id"`
-	Date  string `json:"date" bson:"date"`
-	Code  string `json:"code" bson:"code"`
-	Shift string `json:"shift" bson:"shift"`
+	ID     string `bson:"_id"`
+	Date   string `json:"date" bson:"date"`
+	Code   string `json:"code" bson:"code"`
+	Shift  string `json:"shift" bson:"shift"`
+	Source string `json:"source,omitempty" bson:"source,omitempty"`
 }
 
 func canonicalEmployeeCode(value string) string {
@@ -69,10 +72,16 @@ func canonicalEmployeeCode(value string) string {
 	}
 	return fmt.Sprintf("%06d", n)
 }
+func isITProfile(p EmployeeProfile) bool {
+	return p.Code == "000526" || p.Code == "000549" || p.Code == "000562" || p.Code == "000571" || strings.EqualFold(strings.TrimSpace(p.Position), "พนักงาน IT")
+}
 func initialEmployeeProfiles() []EmployeeProfile {
 	raw := [][4]string{{"000471", "นายชยากร เอกสินเสริม", "ผู้จัดการหน่วยงาน", "จุ้ย"}, {"000526", "นายพิสุทธิ์ศักดิ์ ปิยะพันธ์", "พนักงาน IT", "ต้อง"}, {"000549", "นายฤหัสฤทธิ์ หงษ์โต", "พนักงาน IT", "เด๊ะ"}, {"000562", "นายเอกชน หนูน้อย", "พนักงาน IT", "ชล"}, {"000571", "นายธนากร ปวงบุผา", "พนักงาน IT", "โด่ง"}, {"000498", "นางสาวจิตติมา ชูกร", "พนักงานประชาสัมพันธ์ระบบ", "โบว์"}, {"000500", "นางสาวกัลยวรรธน์ งั่วสมบูรณ์", "พนักงานประชาสัมพันธ์ระบบ", "แนน"}, {"000520", "นางสาวรัชฎาภรณ์ ศรีกุล", "พนักงานประชาสัมพันธ์ระบบ", "แป้ง"}, {"000543", "นางสาวธนภร ชัยวิเศษ", "พนักงานประชาสัมพันธ์ระบบ", "ลูกหมี"}, {"000547", "นางสาวอาทิตยา ด้วงพันธุ์", "พนักงานประชาสัมพันธ์ระบบ", "การ์ตูน"}, {"104284", "นางสาวธันฐภัทร์ วิททิงตั้น", "พนักงานแคชเชียร์", "ควินน์"}, {"104326", "นางสาวศุภพร บุระรัตน์", "พนักงานแคชเชียร์", "ปุ้ม"}, {"104343", "นางสาวพิมพ์ลภัส รัตนอุดม", "พนักงานแคชเชียร์", "แพม"}, {"104466", "นางสาวอ้อยทิพย์ ศรีทอง", "พนักงานแคชเชียร์", "โบว์"}, {"104620", "นางสาวอนัญญา ใจบุญ", "พนักงานแคชเชียร์", "ฝ้าย"}, {"104734", "นางสาวภาสินี สกุลวรเดช", "พนักงานแคชเชียร์", "เก๋"}}
 	out := []EmployeeProfile{}
 	for _, r := range raw {
+		if r[2] != "พนักงาน IT" {
+			continue
+		}
 		out = append(out, EmployeeProfile{Code: r[0], Name: r[1], Position: r[2], Nickname: r[3], DefaultShift: "unassigned", Active: true})
 	}
 	return out
@@ -86,6 +95,7 @@ func initAttendance() {
 	attendanceEvents = db.Collection("attendance_events")
 	attendanceDevices = db.Collection("attendance_devices")
 	attendanceShifts = db.Collection("attendance_shifts")
+	attendanceAvatars = db.Collection("attendance_avatars")
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	models := []mongo.WriteModel{}
@@ -98,6 +108,7 @@ func initAttendance() {
 	}
 	_, _ = attendanceEvents.Indexes().CreateOne(ctx, mongo.IndexModel{Keys: bson.D{{Key: "time", Value: -1}, {Key: "_id", Value: -1}}})
 	_, _ = attendanceEvents.Indexes().CreateOne(ctx, mongo.IndexModel{Keys: bson.D{{Key: "code", Value: 1}, {Key: "time", Value: 1}}})
+	initNovemberITRoster()
 }
 func employeeProfiles(ctx context.Context) ([]EmployeeProfile, error) {
 	cur, err := attendanceEmployees.Find(ctx, bson.M{}, options.Find().SetSort(bson.D{{Key: "_id", Value: 1}}))
@@ -107,7 +118,13 @@ func employeeProfiles(ctx context.Context) ([]EmployeeProfile, error) {
 	defer cur.Close(ctx)
 	out := []EmployeeProfile{}
 	err = cur.All(ctx, &out)
-	return out, err
+	filtered := []EmployeeProfile{}
+	for _, p := range out {
+		if isITProfile(p) {
+			filtered = append(filtered, p)
+		}
+	}
+	return filtered, err
 }
 func deviceRecord(ctx context.Context) (FingerDevice, error) {
 	var d FingerDevice
@@ -118,7 +135,7 @@ func deviceRecord(ctx context.Context) (FingerDevice, error) {
 	return d, err
 }
 func publicFingerDevice(d FingerDevice) map[string]interface{} {
-	return map[string]interface{}{"id": d.ID, "configured": d.KeyHash != "", "enabled": d.Enabled, "lastSeen": d.LastSeen, "lastRead": d.LastRead, "lastError": d.LastError, "machineCount": d.MachineCount}
+	return map[string]interface{}{"id": d.ID, "configured": d.KeyHash != "", "enabled": d.Enabled, "lastSeen": d.LastSeen, "lastRead": d.LastRead, "lastCompleteRead": d.LastCompleteRead, "lastError": d.LastError, "machineCount": d.MachineCount}
 }
 func validEmployeeShift(s string) bool {
 	return s == "day" || s == "night" || s == "off" || s == "unassigned"
@@ -162,7 +179,7 @@ func employeeRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		x := &input.Employees[i]
 		x.Code = canonicalEmployeeCode(x.Code)
 		x.Name = strings.Join(strings.Fields(x.Name), " ")
-		if x.Code == "" || seen[x.Code] || x.Name == "" || len(x.Name) > 200 || len(x.Position) > 200 || len(x.Nickname) > 100 || len(x.Phone) > 60 || !validEmployeeShift(x.DefaultShift) {
+		if x.Code == "" || seen[x.Code] || !isITProfile(*x) || x.Name == "" || len(x.Name) > 200 || len(x.Position) > 200 || len(x.Nickname) > 100 || len(x.Phone) > 60 || !validEmployeeShift(x.DefaultShift) {
 			http.Error(w, "ข้อมูลพนักงานหรือรหัสซ้ำไม่ถูกต้อง", 400)
 			return
 		}
@@ -363,6 +380,9 @@ func fingerIngest(w http.ResponseWriter, r *http.Request) {
 		set["lastRead"] = time.Now().UTC()
 		set["lastError"] = ""
 		set["machineCount"] = input.MachineCount
+		if len(input.Records) < 500 {
+			set["lastCompleteRead"] = time.Now().UTC()
+		}
 	}
 	if _, err = attendanceDevices.UpdateOne(ctx, bson.M{"_id": attendanceDeviceID}, bson.M{"$set": set}); err != nil {
 		w.WriteHeader(503)
@@ -489,7 +509,11 @@ func attendanceViewHandler(w http.ResponseWriter, r *http.Request) {
 		first, last, count := scanSummary(day, p.Code, shift, daily)
 		today = append(today, map[string]interface{}{"employee": p, "shift": shift, "first": first, "last": last, "count": count, "status": arrivalStatus(date, shift, first)})
 	}
-	filter := bson.M{}
+	scopeCodes := []string{}
+	for _, p := range staff {
+		scopeCodes = append(scopeCodes, p.Code)
+	}
+	filter := bson.M{"code": bson.M{"$in": scopeCodes}}
 	for _, key := range []string{"from", "to"} {
 		s := r.URL.Query().Get(key)
 		if s == "" {
@@ -514,6 +538,16 @@ func attendanceViewHandler(w http.ResponseWriter, r *http.Request) {
 	if code := r.URL.Query().Get("code"); code != "" {
 		code = canonicalEmployeeCode(code)
 		if code == "" {
+			w.WriteHeader(400)
+			return
+		}
+		allowed := false
+		for _, p := range staff {
+			if p.Code == code {
+				allowed = true
+			}
+		}
+		if !allowed {
 			w.WriteHeader(400)
 			return
 		}

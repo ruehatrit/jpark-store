@@ -15,7 +15,7 @@ import (
 
 func TestEmployeeIdentityAndCutoff(t *testing.T) {
 	profiles := initialEmployeeProfiles()
-	if len(profiles) != 16 {
+	if len(profiles) != 4 {
 		t.Fatal("missing employee profiles")
 	}
 	seen := map[string]EmployeeProfile{}
@@ -28,7 +28,7 @@ func TestEmployeeIdentityAndCutoff(t *testing.T) {
 			t.Fatal("phone numbers embedded in website source")
 		}
 	}
-	if seen["000520"].Name != "นางสาวรัชฎาภรณ์ ศรีกุล" || seen["000562"].Name != "นายเอกชน หนูน้อย" {
+	if seen["000520"].Code != "" || seen["000562"].Name != "นายเอกชน หนูน้อย" {
 		t.Fatal("520/562 identity mismatch")
 	}
 	for _, test := range []struct{ shift, stamp, want string }{{"day", "2026-11-09 06:59:59", "ontime"}, {"day", "2026-11-09 07:00:00", "late"}, {"night", "2026-11-09 18:59:59", "ontime"}, {"night", "2026-11-09 19:00:00", "late"}, {"night", "2026-11-10 00:05:00", "late"}, {"unassigned", "2026-11-09 07:30:00", "unassigned"}, {"day", "", "missing"}, {"off", "", "off"}} {
@@ -54,8 +54,8 @@ func TestFingerprintIngestAuthenticatedAndIdempotent(t *testing.T) {
 	token, _ := randomMemberToken()
 	sum := sha256.Sum256([]byte(token))
 	device := FingerDevice{ID: attendanceDeviceID, Enabled: true, KeyHash: hex.EncodeToString(sum[:])}
-	person := EmployeeProfile{Code: "000520", Name: "นางสาวรัชฎาภรณ์ ศรีกุล", Active: true}
-	body := `{"device_id":"thai01-main","read_ok":true,"machine_count":14889,"records":[{"code":"520","time":"2026-11-09 06:55:00","status":1,"punch":0}]}`
+	person := EmployeeProfile{Code: "000562", Name: "นายเอกชน หนูน้อย", Active: true}
+	body := `{"device_id":"thai01-main","read_ok":true,"machine_count":14889,"records":[{"code":"562","time":"2026-11-09 06:55:00","status":1,"punch":0}]}`
 	ids := []string{}
 	for i := 0; i < 2; i++ {
 		mock.AddResponses(accountCursor(device), accountCursor(person), writeOK(), writeOK())
@@ -75,7 +75,7 @@ func TestFingerprintIngestAuthenticatedAndIdempotent(t *testing.T) {
 		}
 		ids = append(ids, result.Accepted[0])
 	}
-	if ids[0] != ids[1] || ids[0] != fingerEventID(attendanceDeviceID, "000520", "2026-11-09 06:55:00", 1, 0) {
+	if ids[0] != ids[1] || ids[0] != fingerEventID(attendanceDeviceID, "000562", "2026-11-09 06:55:00", 1, 0) {
 		t.Fatal("retry is not idempotent")
 	}
 	var writes []bson.Raw
@@ -140,7 +140,7 @@ func TestCollectorConfigurationSecretIsOneTime(t *testing.T) {
 		} `json:"config"`
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &response)
-	if len(response.Config.APIKey) != 43 || len(response.Config.Employees) != 16 || response.Config.Employees["000520"] != "นางสาวรัชฎาภรณ์ ศรีกุล" {
+	if len(response.Config.APIKey) != 43 || len(response.Config.Employees) != 4 || response.Config.Employees["000520"] != "" || response.Config.Employees["000562"] != "นายเอกชน หนูน้อย" {
 		t.Fatal("wrong collector config")
 	}
 	for _, cmd := range *commands {
