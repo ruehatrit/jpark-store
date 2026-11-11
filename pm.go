@@ -14,15 +14,24 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
+type PMInternetTest struct {
+	Download *float64 `json:"download,omitempty" bson:"download,omitempty"`
+	Upload   *float64 `json:"upload,omitempty" bson:"upload,omitempty"`
+	Ping     *float64 `json:"ping,omitempty" bson:"ping,omitempty"`
+	TestedAt string   `json:"testedAt" bson:"testedAt"`
+	Provider string   `json:"provider" bson:"provider"`
+}
 type PMResult struct {
-	Key        string   `json:"key" bson:"key"`
-	Name       string   `json:"name" bson:"name"`
-	Group      string   `json:"group" bson:"group"`
-	Status     string   `json:"status" bson:"status"`
-	Note       string   `json:"note" bson:"note"`
-	Inspector  string   `json:"inspector" bson:"inspector"`
-	Inspectors []string `json:"inspectors" bson:"inspectors"`
-	Updated    string   `json:"updated" bson:"updated"`
+	Location   string          `json:"location,omitempty" bson:"location,omitempty"`
+	Internet   *PMInternetTest `json:"internet,omitempty" bson:"internet,omitempty"`
+	Key        string          `json:"key" bson:"key"`
+	Name       string          `json:"name" bson:"name"`
+	Group      string          `json:"group" bson:"group"`
+	Status     string          `json:"status" bson:"status"`
+	Note       string          `json:"note" bson:"note"`
+	Inspector  string          `json:"inspector" bson:"inspector"`
+	Inspectors []string        `json:"inspectors" bson:"inspectors"`
+	Updated    string          `json:"updated" bson:"updated"`
 }
 type PMDoc struct {
 	ID      string              `bson:"_id"`
@@ -90,6 +99,24 @@ func pmLoad(period string) (map[string]PMResult, error) {
 	return d.Results, nil
 }
 func normalizePMResult(x *PMResult) bool {
+	if len(x.Location) > 200 {
+		return false
+	}
+	if t := x.Internet; t != nil {
+		if len(t.Provider) > 200 {
+			return false
+		}
+		if t.TestedAt != "" {
+			if _, err := time.Parse("2006-01-02T15:04", t.TestedAt); err != nil {
+				return false
+			}
+		}
+		for _, v := range []*float64{t.Download, t.Upload, t.Ping} {
+			if v != nil && (*v < 0 || *v > 1000000) {
+				return false
+			}
+		}
+	}
 	if x.Inspectors == nil && strings.TrimSpace(x.Inspector) != "" {
 		x.Inspectors = strings.Split(x.Inspector, " / ")
 	}

@@ -55,6 +55,44 @@ func pmNVRKey(key string) bool {
 	}
 	return false
 }
+func pmEquipmentKey(key string) bool {
+	assetMu.Lock()
+	for _, a := range assetSt.Assets {
+		k := "asset:" + a.AssetID + "-" + strconv.Itoa(a.ID)
+		if a.IP != "" {
+			k = "ip:" + a.IP
+		}
+		if a.Active && k == key {
+			assetMu.Unlock()
+			return true
+		}
+	}
+	assetMu.Unlock()
+	cctvStore.RLock()
+	for _, c := range cctvStore.payload.Cameras {
+		k := "cctv:channel-" + strconv.Itoa(c.Channel)
+		if c.IP != "" {
+			k = "ip:" + c.IP
+		}
+		if k == key {
+			cctvStore.RUnlock()
+			return true
+		}
+	}
+	cctvStore.RUnlock()
+	for _, ip := range []string{"10.10.36.28", "10.10.36.27", "10.10.36.21", "10.10.36.25", "10.10.36.22", "10.10.36.24", "10.10.36.23", "10.10.36.26"} {
+		if key == "ip:"+ip {
+			return true
+		}
+	}
+	// Fixed offline camera placeholders use the same stable keys as the PM page.
+	for ch := 1; ch <= 25; ch++ {
+		if key == "cctv:channel-"+strconv.Itoa(ch) {
+			return true
+		}
+	}
+	return false
+}
 func pmFileType(name string, data []byte) (string, bool) {
 	detected := http.DetectContentType(data)
 	switch strings.ToLower(path.Ext(name)) {
@@ -189,8 +227,17 @@ func pmFilesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	key := r.URL.Query().Get("key")
-	if !pmNVRKey(key) {
-		http.Error(w, "แนบผลทดสอบได้เฉพาะ NVR ที่มีใน Asset Register", 400)
+	validKey := pmEquipmentKey(key)
+	if !validKey && strings.HasPrefix(key, "internet:") {
+		results, e := pmLoad(month)
+		if e != nil {
+			w.WriteHeader(503)
+			return
+		}
+		_, validKey = results[key]
+	}
+	if !validKey {
+		http.Error(w, "กรุณาบันทึกผลตรวจของจุดทดสอบก่อนแนบไฟล์ หรือเลือกอุปกรณ์ที่มีในทะเบียน", 400)
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, pmMaxFile+(64<<10))
@@ -247,7 +294,7 @@ func pmFilesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if count >= 5 {
-		http.Error(w, "แนบได้ไม่เกิน 5 ไฟล์ต่อ NVR ต่อเดือน", 400)
+		http.Error(w, "แนบได้ไม่เกิน 5 ไฟล์ต่ออุปกรณ์ต่อเดือน", 400)
 		return
 	}
 	f := PMFile{ID: id, Month: month, Key: key, Name: name, MIME: kind, Size: len(data), UploadedBy: actor.Username, UploadedAt: time.Now().UTC(), Digest: digest, Data: data}
