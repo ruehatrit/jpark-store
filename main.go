@@ -282,6 +282,7 @@ func main() {
 	http.HandleFunc("/api/daily/export", requireAuth(dailyExportCSV))
 	http.HandleFunc("/api/pm", requireAuth(pmHandler))
 	http.HandleFunc("/api/pm/files", requireAuth(pmFilesHandler))
+	http.HandleFunc("/api/pm/move", requireMemberAdmin(pmMoveHandler))
 	http.HandleFunc("/api/asset/state", requireAuth(assetStateHandler))
 	http.HandleFunc("/api/asset/action", requireAuth(assetActionHandler))
 	// Canonical routes prevent old employee/menu URLs from serving stale HTML.

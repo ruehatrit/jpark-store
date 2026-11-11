@@ -26,16 +26,17 @@ const pmMaxFile = 3 << 20
 var pmFileID = regexp.MustCompile(`^[A-Za-z0-9_-]{16,80}$`)
 
 type PMFile struct {
-	ID         string    `json:"id" bson:"_id"`
-	Month      string    `json:"month" bson:"month"`
-	Key        string    `json:"key" bson:"key"`
-	Name       string    `json:"name" bson:"name"`
-	MIME       string    `json:"mime" bson:"mime"`
-	Size       int       `json:"size" bson:"size"`
-	UploadedBy string    `json:"uploadedBy" bson:"uploadedBy"`
-	UploadedAt time.Time `json:"uploadedAt" bson:"uploadedAt"`
-	Digest     string    `json:"-" bson:"digest"`
-	Data       []byte    `json:"-" bson:"data"`
+	EvidenceDate string    `json:"evidenceDate,omitempty" bson:"evidenceDate,omitempty"`
+	ID           string    `json:"id" bson:"_id"`
+	Month        string    `json:"month" bson:"month"`
+	Key          string    `json:"key" bson:"key"`
+	Name         string    `json:"name" bson:"name"`
+	MIME         string    `json:"mime" bson:"mime"`
+	Size         int       `json:"size" bson:"size"`
+	UploadedBy   string    `json:"uploadedBy" bson:"uploadedBy"`
+	UploadedAt   time.Time `json:"uploadedAt" bson:"uploadedAt"`
+	Digest       string    `json:"-" bson:"digest"`
+	Data         []byte    `json:"-" bson:"data"`
 }
 
 func pmNVRKey(key string) bool {
@@ -198,7 +199,7 @@ func pmFilesHandler(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{"files": files})
 		return
 	}
-	if r.Method != http.MethodPost && r.Method != http.MethodDelete {
+	if r.Method != http.MethodPost && r.Method != http.MethodDelete && r.Method != http.MethodPatch {
 		w.WriteHeader(405)
 		return
 	}
@@ -209,6 +210,10 @@ func pmFilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	pmMu.Lock()
 	defer pmMu.Unlock()
+	if r.Method == http.MethodPatch {
+		pmUpdateEvidenceDate(w, r, ctx, month, actor)
+		return
+	}
 	if r.Method == http.MethodDelete {
 		r.Body = http.MaxBytesReader(w, r.Body, 2048)
 		var q struct {
@@ -281,6 +286,11 @@ func pmFilesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.MultipartForm.RemoveAll()
+	evidenceDate := r.FormValue("evidenceDate")
+	if evidenceDate != "" && !validPMEvidenceDate(evidenceDate, time.Now()) {
+		http.Error(w, "วันที่ทำ PM / ถ่ายรูปต้องเป็นวันที่จริงและไม่เกินวันนี้", 400)
+		return
+	}
 	id := r.FormValue("uploadId")
 	if !pmFileID.MatchString(id) {
 		http.Error(w, "รหัสอัปโหลดไม่ถูกต้อง", 400)
@@ -312,7 +322,7 @@ func pmFilesHandler(w http.ResponseWriter, r *http.Request) {
 	var old PMFile
 	err = pmFileCol.FindOne(ctx, bson.M{"_id": id}, options.FindOne().SetProjection(bson.M{"data": 0})).Decode(&old)
 	if err == nil {
-		if old.Month != month || old.Key != key || old.Digest != digest || old.Name != name {
+		if old.Month != month || old.Key != key || old.Digest != digest || old.Name != name || old.EvidenceDate != evidenceDate {
 			http.Error(w, "รหัสอัปโหลดนี้ถูกใช้แล้ว", 409)
 			return
 		}
@@ -332,7 +342,7 @@ func pmFilesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "แนบได้ไม่เกิน 5 ไฟล์ต่อจุดหรืออุปกรณ์ต่อเดือน", 400)
 		return
 	}
-	f := PMFile{ID: id, Month: month, Key: key, Name: name, MIME: kind, Size: len(data), UploadedBy: actor.Username, UploadedAt: time.Now().UTC(), Digest: digest, Data: data}
+	f := PMFile{EvidenceDate: evidenceDate, ID: id, Month: month, Key: key, Name: name, MIME: kind, Size: len(data), UploadedBy: actor.Username, UploadedAt: time.Now().UTC(), Digest: digest, Data: data}
 	audit, err := beginAudit(actor, "PM", "uploadAttachment", f.ID, nil, f)
 	if err != nil {
 		http.Error(w, "เก็บ Log ไม่สำเร็จ ยังไม่อัปโหลดไฟล์", 503)
