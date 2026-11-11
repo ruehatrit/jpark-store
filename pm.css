@@ -5,3 +5,4 @@
 .point-group{margin:22px 0;border:1px solid #d3e2ef;border-radius:14px;overflow:hidden}.point-group>h2{background:#eaf3fc;padding:14px;margin:0;font-size:17px}.point-group small{font-size:12px;font-weight:normal}.point-group .device{border-radius:0}.net-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.net-fields input{width:100%}@media(max-width:600px){.net-fields{grid-template-columns:1fr}}
 
 .file-date{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:7px 0}.file-date small{flex-basis:100%}.file-date input{width:auto}.file-date button{font-size:12px}
+.replace-choice{display:flex;align-items:center;gap:9px;padding:12px;background:#fff7e8;border:1px solid #efdab4;border-radius:10px}.replace-choice input{width:18px;height:18px;margin:0;flex-shrink:0}
