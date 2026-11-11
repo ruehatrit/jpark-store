@@ -63,35 +63,3 @@ func TestCCTVCatalogPersistsIdentityWithoutChangingLiveStatus(t *testing.T) {
 		t.Fatal("live inventory must override old identity")
 	}
 }
-func TestPMCameraPointsSavedWithoutChangingMonthlyResults(t *testing.T) {
-	mock, commands := mockAccounts(t)
-	oldClient := mongoClient
-	mongoClient = memberCol.Database().Client()
-	defer func() { mongoClient = oldClient }()
-	cctvStore.Lock()
-	oldPayload := cctvStore.payload
-	cctvStore.payload = CCTVPayload{}
-	cctvStore.Unlock()
-	defer func() { cctvStore.Lock(); cctvStore.payload = oldPayload; cctvStore.Unlock() }()
-	mock.AddResponses(accountCursor(cameraInventoryDoc{ID: "main", Cameras: []CameraIdentity{{Channel: 1, IP: "10.10.32.40"}}}), accountCursor(), writeOK(), writeOK(), writeOK())
-	req := rootRequest("POST", "/api/pm/camera-points", `{"points":[{"key":"ip:10.10.32.40","location":"Member B3C ทางออก 1","scope":"point"}]}`)
-	rec := httptest.NewRecorder()
-	requireAuth(cameraPointHandler)(rec, req)
-	if rec.Code != 200 {
-		t.Fatal("camera assignment failed", rec.Code, rec.Body.String())
-	}
-	wrote := false
-	for _, cmd := range *commands {
-		if v := cmd.Lookup("update"); v.Type != 0 {
-			if v.StringValue() == "pm_months" {
-				t.Fatal("camera assignment changed monthly PM")
-			}
-			if v.StringValue() == "pm_camera_points" {
-				wrote = true
-			}
-		}
-	}
-	if !wrote {
-		t.Fatal("point assignment not saved")
-	}
-}

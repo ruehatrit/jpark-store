@@ -255,7 +255,6 @@ func main() {
 	http.HandleFunc("/api/cctv/ingest", cctvIngest)
 	http.HandleFunc("/api/cctv/status", requireAuth(cctvStatus))
 	http.HandleFunc("/api/cctv/catalog", requireAuth(cctvCatalogHandler))
-	http.HandleFunc("/api/pm/camera-points", requireAuth(cameraPointHandler))
 	http.HandleFunc("/api/cctv/names", requireAuth(cctvNamesHandler))
 	http.HandleFunc("/api/worklog", requireAuth(worklogHandler))
 	http.HandleFunc("/api/attendance/it-month", requireAuth(itMonthHandler))

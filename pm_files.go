@@ -94,6 +94,13 @@ func pmEquipmentKey(key string) bool {
 	}
 	return false
 }
+
+var pmPointNumberSpace = regexp.MustCompile(`(ทางเข้า|ทางออก)\s*([0-9]+)`)
+
+func normalizePMPointName(s string) string {
+	return pmPointNumberSpace.ReplaceAllString(strings.Join(strings.Fields(s), " "), "${1} ${2}")
+}
+
 func pmSharedAttachmentKey(ctx context.Context, month, key string) (bool, error) {
 	if key == "network:ping" {
 		return true, nil
@@ -102,7 +109,7 @@ func pmSharedAttachmentKey(ctx context.Context, month, key string) (bool, error)
 		return false, nil
 	}
 	name := strings.TrimPrefix(key, "point:")
-	if name == "" || len(name) > 140 || name != strings.Join(strings.Fields(name), " ") {
+	if name == "" || len(name) > 140 || name != normalizePMPointName(name) {
 		return false, nil
 	}
 	for _, p := range []string{"B1 A15", "B1 A16", "B1 B8", "B1 C9", "B1 G11", "B1 H12", "B1 M9", "B2 C18", "B2 B13", "B3 B13", "B3 C12", "B3 F6", "B3 C28", "B3 N8"} {
@@ -113,7 +120,7 @@ func pmSharedAttachmentKey(ctx context.Context, month, key string) (bool, error)
 	assetMu.Lock()
 	matched := false
 	for _, a := range assetSt.Assets {
-		if a.Active && strings.Join(strings.Fields(a.Location), " ") == name {
+		if a.Active && normalizePMPointName(a.Location) == name {
 			matched = true
 			break
 		}
@@ -127,7 +134,7 @@ func pmSharedAttachmentKey(ctx context.Context, month, key string) (bool, error)
 		return false, err
 	}
 	for _, r := range results {
-		if r.PhotoScope == "point" && strings.Join(strings.Fields(r.Location), " ") == name {
+		if r.PhotoScope == "point" && normalizePMPointName(r.Location) == name {
 			return true, nil
 		}
 	}

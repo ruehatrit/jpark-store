@@ -59,3 +59,13 @@ func TestPMInternetResultsValidateAndPreserveZero(t *testing.T) {
 		t.Fatal("bad test time accepted")
 	}
 }
+
+func TestPMAssetPointSpacingMatchesPhotoGroup(t *testing.T) {
+	old := assetSt
+	defer func() { assetSt = old }()
+	assetSt = AssetState{Assets: []Asset{{ID: 1, Active: true, Location: "Member B3C ทางออก1"}}}
+	ok, err := pmSharedAttachmentKey(context.Background(), "2026-11", "point:Member B3C ทางออก 1")
+	if err != nil || !ok {
+		t.Fatal("Asset point/photo group mismatch", err)
+	}
+}
