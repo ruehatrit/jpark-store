@@ -22,6 +22,7 @@ type PMInternetTest struct {
 	Provider string   `json:"provider" bson:"provider"`
 }
 type PMResult struct {
+	PhotoScope string          `json:"photoScope,omitempty" bson:"photoScope,omitempty"`
 	Location   string          `json:"location,omitempty" bson:"location,omitempty"`
 	Internet   *PMInternetTest `json:"internet,omitempty" bson:"internet,omitempty"`
 	Key        string          `json:"key" bson:"key"`
@@ -99,6 +100,12 @@ func pmLoad(period string) (map[string]PMResult, error) {
 	return d.Results, nil
 }
 func normalizePMResult(x *PMResult) bool {
+	if x.PhotoScope != "" && x.PhotoScope != "point" && x.PhotoScope != "device" {
+		return false
+	}
+	if x.PhotoScope == "point" && (strings.TrimSpace(x.Location) == "" || x.Location == "ยังไม่ระบุจุด" || len(x.Location) > 140) {
+		return false
+	}
 	if len(x.Location) > 200 {
 		return false
 	}

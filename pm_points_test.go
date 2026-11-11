@@ -1,6 +1,36 @@
 package main
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
+
+func TestPMSharedPointAndNetworkEvidence(t *testing.T) {
+	old := pmMonthCol
+	pmMonthCol = nil
+	defer func() { pmMonthCol = old; delete(pmMemory, "2026-12") }()
+	pmMemory["2026-12"] = map[string]PMResult{"asset:custom": {Location: "จุดทดสอบ", PhotoScope: "point"}}
+	for _, key := range []string{"point:B1 A15", "point:B2 C18", "point:B3 N8", "network:ping", "point:จุดทดสอบ"} {
+		ok, err := pmSharedAttachmentKey(context.Background(), "2026-12", key)
+		if err != nil || !ok {
+			t.Fatal("valid shared evidence rejected", key, err)
+		}
+	}
+	for _, key := range []string{"point:", "point:unknown", "point:B1  A15", "point:ออฟฟิศ"} {
+		ok, err := pmSharedAttachmentKey(context.Background(), "2026-12", key)
+		if err != nil || ok {
+			t.Fatal("unregistered point accepted", key, err)
+		}
+	}
+	x := PMResult{Key: "ip:1", Name: "Kiosk", Status: "pending", PhotoScope: "point"}
+	if normalizePMResult(&x) {
+		t.Fatal("shared photo scope without point accepted")
+	}
+	x.PhotoScope = "unsupported"
+	if normalizePMResult(&x) {
+		t.Fatal("invalid scope accepted")
+	}
+}
 
 func TestPMPhotosAllowedForEveryRegisteredDevice(t *testing.T) {
 	old := assetSt

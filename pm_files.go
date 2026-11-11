@@ -93,6 +93,33 @@ func pmEquipmentKey(key string) bool {
 	}
 	return false
 }
+func pmSharedAttachmentKey(ctx context.Context, month, key string) (bool, error) {
+	if key == "network:ping" {
+		return true, nil
+	}
+	if !strings.HasPrefix(key, "point:") {
+		return false, nil
+	}
+	name := strings.TrimPrefix(key, "point:")
+	if name == "" || len(name) > 140 || name != strings.Join(strings.Fields(name), " ") {
+		return false, nil
+	}
+	for _, p := range []string{"B1 A15", "B1 A16", "B1 B8", "B1 C9", "B1 G11", "B1 H12", "B1 M9", "B2 C18", "B2 B13", "B3 B13", "B3 C12", "B3 F6", "B3 C28", "B3 N8"} {
+		if name == p {
+			return true, nil
+		}
+	}
+	results, err := pmLoad(month)
+	if err != nil {
+		return false, err
+	}
+	for _, r := range results {
+		if r.PhotoScope == "point" && strings.Join(strings.Fields(r.Location), " ") == name {
+			return true, nil
+		}
+	}
+	return false, nil
+}
 func pmFileType(name string, data []byte) (string, bool) {
 	detected := http.DetectContentType(data)
 	switch strings.ToLower(path.Ext(name)) {
@@ -228,6 +255,14 @@ func pmFilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	key := r.URL.Query().Get("key")
 	validKey := pmEquipmentKey(key)
+	if !validKey {
+		var e error
+		validKey, e = pmSharedAttachmentKey(ctx, month, key)
+		if e != nil {
+			w.WriteHeader(503)
+			return
+		}
+	}
 	if !validKey && strings.HasPrefix(key, "internet:") {
 		results, e := pmLoad(month)
 		if e != nil {
@@ -294,7 +329,7 @@ func pmFilesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if count >= 5 {
-		http.Error(w, "แนบได้ไม่เกิน 5 ไฟล์ต่ออุปกรณ์ต่อเดือน", 400)
+		http.Error(w, "แนบได้ไม่เกิน 5 ไฟล์ต่อจุดหรืออุปกรณ์ต่อเดือน", 400)
 		return
 	}
 	f := PMFile{ID: id, Month: month, Key: key, Name: name, MIME: kind, Size: len(data), UploadedBy: actor.Username, UploadedAt: time.Now().UTC(), Digest: digest, Data: data}
