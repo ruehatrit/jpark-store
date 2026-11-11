@@ -110,6 +110,18 @@ func pmSharedAttachmentKey(ctx context.Context, month, key string) (bool, error)
 			return true, nil
 		}
 	}
+	assetMu.Lock()
+	matched := false
+	for _, a := range assetSt.Assets {
+		if a.Active && strings.Join(strings.Fields(a.Location), " ") == name {
+			matched = true
+			break
+		}
+	}
+	assetMu.Unlock()
+	if matched {
+		return true, nil
+	}
 	results, err := pmLoad(month)
 	if err != nil {
 		return false, err
@@ -260,6 +272,19 @@ func pmFilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	key := r.URL.Query().Get("key")
 	validKey := pmEquipmentKey(key)
+	if !validKey && strings.HasPrefix(key, "ip:") {
+		cameras, e := registeredCameras(ctx)
+		if e != nil {
+			w.WriteHeader(503)
+			return
+		}
+		for _, c := range cameras {
+			if key == "ip:"+c.IP {
+				validKey = true
+				break
+			}
+		}
+	}
 	if !validKey {
 		var e error
 		validKey, e = pmSharedAttachmentKey(ctx, month, key)
