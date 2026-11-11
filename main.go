@@ -265,8 +265,9 @@ func main() {
 	http.HandleFunc("/api/attendance/device", requireMemberAdmin(attendanceDeviceHandler))
 	http.HandleFunc("/api/attendance/shifts", requireMemberAdmin(attendanceShiftHandler))
 	http.HandleFunc("/api/attendance/ingest", fingerIngest)
-	http.HandleFunc("/api/members", requireMemberAdmin(membersHandler))
-	http.HandleFunc("/api/audit", requireMemberAdmin(auditHandler))
+	http.HandleFunc("/api/members", requireMemberManagement(membersHandler))
+	http.HandleFunc("/api/admin/confirm", requireMemberAdmin(memberConfirmHandler))
+	http.HandleFunc("/api/audit", requireMemberManagement(auditHandler))
 	http.HandleFunc("/api/login", login)
 	http.HandleFunc("/api/logout", logout)
 	http.HandleFunc("/api/session", sessionStatus)
@@ -308,6 +309,10 @@ func main() {
 		cleanPath := path.Clean("/" + r.URL.Path)
 		if cleanPath == "/fingerprint-agent" || strings.HasPrefix(cleanPath, "/fingerprint-agent/") || strings.HasSuffix(cleanPath, ".go") || strings.HasSuffix(cleanPath, "/Employee_Register_16_Import.csv") {
 			http.NotFound(w, r)
+			return
+		}
+		if cleanPath == "/members.html" {
+			requireMemberAdmin(func(w http.ResponseWriter, r *http.Request) { http.FileServer(http.Dir(".")).ServeHTTP(w, r) })(w, r)
 			return
 		}
 		http.FileServer(http.Dir(".")).ServeHTTP(w, r)
