@@ -11,15 +11,17 @@ import (
 )
 
 type ITDay struct {
-	Date       string `json:"date"`
-	Code       string `json:"code"`
-	Shift      string `json:"shift"`
-	In         string `json:"in"`
-	Out        string `json:"out"`
-	Status     string `json:"status"`
-	Late       bool   `json:"late"`
-	Source     string `json:"source"`
-	Incomplete bool   `json:"incomplete"`
+	ManualLeave bool   `json:"manualLeave"`
+	LeaveNote   string `json:"leaveNote"`
+	Date        string `json:"date"`
+	Code        string `json:"code"`
+	Shift       string `json:"shift"`
+	In          string `json:"in"`
+	Out         string `json:"out"`
+	Status      string `json:"status"`
+	Late        bool   `json:"late"`
+	Source      string `json:"source"`
+	Incomplete  bool   `json:"incomplete"`
 }
 
 func evaluateITDay(date, code, shift string, events []FingerEvent, now, complete, oldest time.Time) ITDay {
@@ -68,7 +70,7 @@ func evaluateITDay(date, code, shift string, events []FingerEvent, now, complete
 		row.Incomplete = true
 		return row
 	}
-	row.Late = row.In >= start.Format("2006-01-02 15:04:05")
+	row.Late = row.In >= start.Add(time.Minute).Format("2006-01-02 15:04:05")
 	row.Status = "present"
 	if row.Late {
 		row.Status = "late"
@@ -165,6 +167,7 @@ func itMonthHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			row := evaluateITDay(date, p.Code, shift, events, now, device.LastCompleteRead, oldest)
 			row.Source = plan.Source
+			applyITLeave(&row, plan)
 			rows = append(rows, row)
 		}
 	}

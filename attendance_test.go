@@ -31,7 +31,7 @@ func TestEmployeeIdentityAndCutoff(t *testing.T) {
 	if seen["000520"].Code != "" || seen["000562"].Name != "นายเอกชน หนูน้อย" {
 		t.Fatal("520/562 identity mismatch")
 	}
-	for _, test := range []struct{ shift, stamp, want string }{{"day", "2026-11-09 06:59:59", "ontime"}, {"day", "2026-11-09 07:00:00", "late"}, {"night", "2026-11-09 18:59:59", "ontime"}, {"night", "2026-11-09 19:00:00", "late"}, {"night", "2026-11-10 00:05:00", "late"}, {"unassigned", "2026-11-09 07:30:00", "unassigned"}, {"day", "", "missing"}, {"off", "", "off"}} {
+	for _, test := range []struct{ shift, stamp, want string }{{"day", "2026-11-09 06:59:59", "ontime"}, {"day", "2026-11-09 07:00:00", "ontime"}, {"night", "2026-11-09 18:59:59", "ontime"}, {"night", "2026-11-09 19:00:00", "ontime"}, {"night", "2026-11-10 00:05:00", "late"}, {"unassigned", "2026-11-09 07:30:00", "unassigned"}, {"day", "", "missing"}, {"off", "", "off"}} {
 		if got := arrivalStatus("2026-11-09", test.shift, test.stamp); got != test.want {
 			t.Fatal(test, got)
 		}

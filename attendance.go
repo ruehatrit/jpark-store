@@ -54,11 +54,13 @@ type FingerDevice struct {
 	MachineCount     int       `bson:"machineCount"`
 }
 type EmployeeShift struct {
-	ID     string `bson:"_id"`
-	Date   string `json:"date" bson:"date"`
-	Code   string `json:"code" bson:"code"`
-	Shift  string `json:"shift" bson:"shift"`
-	Source string `json:"source,omitempty" bson:"source,omitempty"`
+	ManualLeave bool   `json:"manualLeave,omitempty" bson:"manualLeave,omitempty"`
+	LeaveNote   string `json:"leaveNote,omitempty" bson:"leaveNote,omitempty"`
+	ID          string `bson:"_id"`
+	Date        string `json:"date" bson:"date"`
+	Code        string `json:"code" bson:"code"`
+	Shift       string `json:"shift" bson:"shift"`
+	Source      string `json:"source,omitempty" bson:"source,omitempty"`
 }
 
 func canonicalEmployeeCode(value string) string {
@@ -401,9 +403,9 @@ func arrivalStatus(date, shift, first string) string {
 	if first == "" {
 		return "missing"
 	}
-	cutoff := date + " 07:00:00"
+	cutoff := date + " 07:01:00"
 	if shift == "night" {
-		cutoff = date + " 19:00:00"
+		cutoff = date + " 19:01:00"
 	}
 	if first >= cutoff {
 		return "late"

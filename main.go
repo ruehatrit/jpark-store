@@ -258,6 +258,7 @@ func main() {
 	http.HandleFunc("/api/cctv/names", requireAuth(cctvNamesHandler))
 	http.HandleFunc("/api/worklog", requireAuth(worklogHandler))
 	http.HandleFunc("/api/attendance/it-month", requireAuth(itMonthHandler))
+	http.HandleFunc("/api/attendance/it-leave", requireMemberAdmin(itLeaveHandler))
 	http.HandleFunc("/api/attendance/roster", requireMemberAdmin(itRosterHandler))
 	http.HandleFunc("/api/attendance/avatar", requireAuth(itAvatarHandler))
 	http.HandleFunc("/api/attendance", requireAuth(attendanceViewHandler))
